@@ -33,6 +33,13 @@ namespace DMicroservices.DataAccess.MongoRepository
 
         private IMongoCollection<T> GetCollection(IDatabaseSettings dbSettings)
         {
+            if (string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
+                dbSettings.ConnectionString = DatabaseSettings.ConnectionString;
+            if (string.IsNullOrWhiteSpace(dbSettings.CollectionName))
+                dbSettings.CollectionName = DatabaseSettings.CollectionName;
+            if (string.IsNullOrWhiteSpace(dbSettings.DatabaseName))
+                dbSettings.DatabaseName = DatabaseSettings.DatabaseName;
+
             return GetDatabase(dbSettings).GetCollection<T>(typeof(T).Name);
         }
 
