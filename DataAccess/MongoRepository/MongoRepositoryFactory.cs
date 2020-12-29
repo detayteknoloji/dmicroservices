@@ -10,19 +10,9 @@ namespace DMicroservices.DataAccess.MongoRepository
             return new MongoRepository<T>();
         }
 
-        public static FilteredMongoRepository<T> CreateMongoRepository<T>(int? companyNo) where T : class, IMongoRepositoryCollection
+        public static MongoRepository<T> CreateMongoRepository<T>(DatabaseSettings databaseSettings) where T : class, IMongoRepositoryCollection
         {
-            return new FilteredMongoRepository<T>(companyNo);
-        }
-
-        public static FilteredMongoRepository<T> CreateMongoRepository<T>(DatabaseSettings databaseSettings) where T : class, IMongoRepositoryCollection
-        {
-            return new FilteredMongoRepository<T>(databaseSettings.CompanyNo, databaseSettings);
-        }
-
-        public static FilteredMongoRepository<T> CreateMongoRepository<T>(int companyNo, string collectionName) where T : class, IMongoRepositoryCollection
-        {
-            return new FilteredMongoRepository<T>(companyNo, new DatabaseSettings() { CollectionName = collectionName });
+            return new MongoRepository<T>(databaseSettings);
         }
     }
 }

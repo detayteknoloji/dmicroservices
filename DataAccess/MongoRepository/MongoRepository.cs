@@ -21,7 +21,8 @@ namespace DMicroservices.DataAccess.MongoRepository
 
         private static Dictionary<string, IMongoDatabase> Databases { get; set; } = new Dictionary<string, IMongoDatabase>();
         private static Dictionary<string, MongoClient> MongoClients { get; set; } = new Dictionary<string, MongoClient>();
-        
+        private IMongoDatabase database;
+
         public DatabaseSettings DatabaseSettings { get; set; } = new DatabaseSettings()
         {
             CollectionName = typeof(T).Name,
@@ -30,8 +31,53 @@ namespace DMicroservices.DataAccess.MongoRepository
         };
 
 
+        public IMongoCollection<T> CurrentCollection { get; set; }
+
+
+        public IMongoDatabase Database
+        {
+            get
+            {
+                if (database == null)
+                    database = GetDatabase(DatabaseSettings);
+                return database;
+            }
+            set { database = value; }
+        }
+
+        public MongoRepository()
+        {
+            Database = GetDatabase(DatabaseSettings);
+            if (Database.GetCollection<T>(typeof(T).Name) == null)
+            {
+                Database.CreateCollection(typeof(T).Name);
+            }
+
+            CurrentCollection = GetCollection(DatabaseSettings);
+        }
+
+        public MongoRepository(DatabaseSettings dbSettings)
+        {
+            DatabaseSettings = dbSettings;
+
+            Database = GetDatabase(DatabaseSettings);
+            if (Database.GetCollection<T>(typeof(T).Name) == null)
+            {
+                Database.CreateCollection(typeof(T).Name);
+            }
+
+            CurrentCollection = GetCollection(DatabaseSettings);
+        }
+
         private IMongoCollection<T> GetCollection(IDatabaseSettings dbSettings)
         {
+            if (string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
+                dbSettings.ConnectionString = DatabaseSettings.ConnectionString;
+            if (string.IsNullOrWhiteSpace(dbSettings.CollectionName))
+                dbSettings.CollectionName = DatabaseSettings.CollectionName;
+            if (string.IsNullOrWhiteSpace(dbSettings.DatabaseName))
+                dbSettings.DatabaseName = DatabaseSettings.DatabaseName;
+
             return GetDatabase(dbSettings).GetCollection<T>(typeof(T).Name);
         }
 
@@ -108,50 +154,6 @@ namespace DMicroservices.DataAccess.MongoRepository
                     _clientLocker.ExitReadLock();
             }
             return client;
-        }
-
-        public IMongoCollection<T> CurrentCollection { get; set; }
-
-        private IMongoDatabase database;
-
-        public IMongoDatabase Database
-        {
-            get
-            {
-                if (database == null)
-                    database = GetDatabase(DatabaseSettings);
-                return database;
-            }
-            set { database = value; }
-        }
-
-        public MongoRepository()
-        {
-            Database = GetDatabase(DatabaseSettings);
-            if (Database.GetCollection<T>(typeof(T).Name) == null)
-            {
-                Database.CreateCollection(typeof(T).Name);
-            }
-
-            CurrentCollection = GetCollection(DatabaseSettings);
-        }
-
-        public MongoRepository(DatabaseSettings dbSettings)
-        {
-            DatabaseSettings = dbSettings;
-
-            Database = GetDatabase(DatabaseSettings);
-            if (Database.GetCollection<T>(typeof(T).Name) == null)
-            {
-                Database.CreateCollection(typeof(T).Name);
-            }
-
-            CurrentCollection = GetCollection(DatabaseSettings);
-        }
-
-        public MongoRepository(int companyNo, IDatabaseSettings dbSettings = null)
-        {
-            CurrentCollection = GetCollection(dbSettings);
         }
 
         public bool Add(T entity)
