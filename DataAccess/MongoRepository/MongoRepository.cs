@@ -23,16 +23,10 @@ namespace DMicroservices.DataAccess.MongoRepository
         private static Dictionary<string, MongoClient> MongoClients { get; set; } = new Dictionary<string, MongoClient>();
         private IMongoDatabase database;
 
-        public DatabaseSettings DatabaseSettings { get; set; } = new DatabaseSettings()
-        {
-            CollectionName = typeof(T).Name,
-            ConnectionString = Environment.GetEnvironmentVariable("MONGO_URI"),
-            DatabaseName = Environment.GetEnvironmentVariable("MONGO_DB_NAME"),
-        };
+        public DatabaseSettings DatabaseSettings { get; set; } = new DatabaseSettings();
 
 
         public IMongoCollection<T> CurrentCollection { get; set; }
-
 
         public IMongoDatabase Database
         {
@@ -58,8 +52,14 @@ namespace DMicroservices.DataAccess.MongoRepository
 
         public MongoRepository(DatabaseSettings dbSettings)
         {
-            DatabaseSettings = dbSettings;
+            if (string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
+                dbSettings.ConnectionString = Environment.GetEnvironmentVariable("MONGO_URI");
+            if (string.IsNullOrWhiteSpace(dbSettings.CollectionName))
+                dbSettings.CollectionName = typeof(T).Name;
+            if (string.IsNullOrWhiteSpace(dbSettings.DatabaseName))
+                dbSettings.DatabaseName = Environment.GetEnvironmentVariable("MONGO_DB_NAME");
 
+            DatabaseSettings = dbSettings;
             Database = GetDatabase(DatabaseSettings);
             if (Database.GetCollection<T>(typeof(T).Name) == null)
             {
@@ -71,13 +71,6 @@ namespace DMicroservices.DataAccess.MongoRepository
 
         private IMongoCollection<T> GetCollection(IDatabaseSettings dbSettings)
         {
-            if (string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
-                dbSettings.ConnectionString = DatabaseSettings.ConnectionString;
-            if (string.IsNullOrWhiteSpace(dbSettings.CollectionName))
-                dbSettings.CollectionName = DatabaseSettings.CollectionName;
-            if (string.IsNullOrWhiteSpace(dbSettings.DatabaseName))
-                dbSettings.DatabaseName = DatabaseSettings.DatabaseName;
-
             return GetDatabase(dbSettings).GetCollection<T>(typeof(T).Name);
         }
 
