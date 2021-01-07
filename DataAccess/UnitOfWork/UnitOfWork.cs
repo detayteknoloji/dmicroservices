@@ -138,7 +138,6 @@ namespace DMicroservices.DataAccess.UnitOfWork
 
         public void Dispose()
         {
-            DbContext.Database.CloseConnection();
             DbContext = null;
         }
         #endregion
