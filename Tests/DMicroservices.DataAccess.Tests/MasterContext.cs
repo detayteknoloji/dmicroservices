@@ -18,22 +18,15 @@ namespace DMicroservices.DataAccess.Tests
 
         }
 
-        #region Organisation Tables
-        public DbSet<ClassModel> Classes { get; set; }
-        public DbSet<StudentModel> Students { get; set; }
-        public DbSet<DocumentModel> Documents { get; set; }
-
-        #endregion
-
-
-        public DbSet<TeacherModel> Teachers { get; set; }
+        public DbSet<City> City { get; set; }
+        public DbSet<Person> Person { get; set; }
+        public DbSet<Student> Student { get; set; }
+        public DbSet<Teacher> Teacher { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ClassModel>().HasKey(s => s.Id);
-            modelBuilder.Entity<StudentModel>().HasKey(i => i.Id);
-            modelBuilder.Entity<TeacherModel>().HasKey(i => i.Id);
-            modelBuilder.Entity<DocumentModel>().HasKey(i => i.Id);
+
+            modelBuilder.Entity<Person>().HasOne(x => x.City).WithMany(x => x.Persons);
         }
 
 
@@ -41,7 +34,8 @@ namespace DMicroservices.DataAccess.Tests
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseMySQL(Environment.GetEnvironmentVariable("MYSQL_URI"));
+                optionsBuilder.UseMySql(Environment.GetEnvironmentVariable("MYSQL_URI"),
+                    ServerVersion.AutoDetect(Environment.GetEnvironmentVariable("MYSQL_URI")));
             }
             base.OnConfiguring(optionsBuilder);
         }

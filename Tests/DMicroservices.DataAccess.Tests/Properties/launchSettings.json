@@ -3,7 +3,7 @@
     "DMicroservices.DataAccess.Tests": {
       "commandName": "Project",
       "environmentVariables": {
-        "MYSQL_URI": "server=localhost;port=16090;database=ledmstest;user=root;password=root;Max Pool Size=200;Min Pool Size=10;Pooling=true"
+        "MYSQL_URI": "server=localhost;port=13038;database=xyz;user=root;password=root;Max Pool Size=200;Min Pool Size=10;Pooling=true"
       }
     }
   }
