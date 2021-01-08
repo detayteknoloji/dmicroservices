@@ -16,5 +16,7 @@ namespace DMicroservices.DataAccess.Tests.Models
 
         public City City { get; set; }
 
+        public long ForeignCityId { get; set; }
+
     }
 }

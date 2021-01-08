@@ -26,7 +26,7 @@ namespace DMicroservices.DataAccess.Tests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
-            modelBuilder.Entity<Person>().HasOne(x => x.City).WithMany(x => x.Persons);
+            modelBuilder.Entity<Person>().HasOne(x => x.City).WithMany(x => x.Persons).HasForeignKey(x => x.ForeignCityId).HasPrincipalKey(x => x.Id);
         }
 
 
