@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using Serilog.Sinks.Elasticsearch;
 using System;
+using System.Diagnostics;
 
 namespace DMicroservices.Utils.Logger
 {
@@ -46,6 +47,10 @@ namespace DMicroservices.Utils.Logger
 
             if (IsConfigured)
                 _log.Error(ex, messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
         }
 
         public void Error(Exception ex, string messageTemplate, string companyNo)
@@ -59,6 +64,10 @@ namespace DMicroservices.Utils.Logger
 
             if (IsConfigured)
                 _log.Error(ex, messageTemplate, companyNo);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
         }
 
         public void Info(string messageTemplate)
@@ -70,6 +79,10 @@ namespace DMicroservices.Utils.Logger
 
             if (IsConfigured)
                 _log.Information(messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
+#endif
         }
 
         private void Configure(string elasticUri, string format)

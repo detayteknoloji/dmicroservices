@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using DMicroservices.RabbitMq.Consumer;
 using DMicroservices.RabbitMq.Producer;
+using DMicroservices.Utils.Logger;
 
 namespace DMicroservices.RabbitMq.Base
 {
@@ -29,9 +30,16 @@ namespace DMicroservices.RabbitMq.Base
             if (ConsumerList.Any(x => x.GetType() == consumer))
                 throw new Exception("Consumer already registered.");
 
-            var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
+            try
+            {
+                var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
+                ConsumerList.Add(consumerObject);
+            }
+            catch (Exception e)
+            {
+                ElasticLogger.Instance.Error(e, $"ConsumerRegistry throw an error : {e.Message}");
+            }
 
-            ConsumerList.Add(consumerObject);
         }
 
         #endregion
