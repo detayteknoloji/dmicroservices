@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<RepositoryUrl>https://github.com/detayteknoloji/dmicroservices</RepositoryUrl>
+		<Authors>Serhat Boyraz</Authors>
+		<Company>Detaysoft</Company>
+		<Version>3.0.2</Version>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<OutputType>Library</OutputType>
+		<IsPackable>true</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="Tests\**" />
+		<EmbeddedResource Remove="Tests\**" />
+		<None Remove="Tests\**" />
+		<None Include="LICENSE">
+		  <Pack>True</Pack>
+		  <PackagePath></PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+
+		<PackageReference Include="Elasticsearch.Net" Version="7.10.1" />
+
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.1" />
+		<PackageReference Include="Serilog" Version="2.9.0" />
+		<PackageReference Include="Serilog.Sinks.ElasticSearch" Version="8.0.1" />
+
+		<PackageReference Include="MessagePack" Version="2.2.85" />
+		<PackageReference Include="MongoDB.Bson" Version="2.11.4" />
+		<PackageReference Include="MongoDB.Driver" Version="2.11.4" />
+		<PackageReference Include="NEST" Version="7.10.1" />
+		<PackageReference Include="StackExchange.Redis" Version="2.2.4" />
+		<PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+		<PackageReference Include="RabbitMQ.Client" Version="6.2.1" />
+		<PackageReference Include="RestSharp" Version="106.10.1" />
+	</ItemGroup>
+
+</Project>

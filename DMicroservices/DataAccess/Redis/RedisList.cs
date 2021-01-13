@@ -1,0 +1,124 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using StackExchange.Redis;
+
+namespace DMicroservices.DataAccess.Redis
+{
+
+    public class RedisList<T> : IList<T>
+    {
+        private static readonly string Domain = Environment.GetEnvironmentVariable("REDIS_URL");
+        private ConnectionMultiplexer Connection { get; set; }
+        private IDatabase RedisDatabase { get; set; }
+
+        private string _key;
+        public RedisList(string key)
+        {
+            _key = key;
+
+            ConfigurationOptions options = ConfigurationOptions.Parse(Domain);
+            Connection = ConnectionMultiplexer.Connect(options);
+            RedisDatabase = Connection.GetDatabase();
+        }
+        private IDatabase GetRedisDb()
+        {
+            return Connection.GetDatabase();
+        }
+        private byte[] Serialize(object obj)
+        {
+            return MessagePack.MessagePackSerializer.Serialize(obj, MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance));
+        }
+        private T Deserialize<T>(byte[] serialized)
+        {
+            return MessagePack.MessagePackSerializer.Deserialize<T>(serialized, MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance));
+        }
+        public void Insert(int index, T item)
+        {
+            var db = GetRedisDb();
+            var before = db.ListGetByIndex(_key, index);
+            db.ListInsertBefore(_key, before, Serialize(item));
+        }
+        public void RemoveAt(int index)
+        {
+            var db = GetRedisDb();
+            var value = db.ListGetByIndex(_key, index);
+            if (!value.IsNull)
+            {
+                db.ListRemove(_key, value);
+            }
+        }
+        public T this[int index]
+        {
+            get
+            {
+                var value = GetRedisDb().ListGetByIndex(_key, index);
+                return Deserialize<T>(value);
+            }
+            set
+            {
+                Insert(index, value);
+            }
+        }
+        public void Add(T item)
+        {
+            GetRedisDb().ListRightPush(_key, Serialize(item));
+        }
+        public void Clear()
+        {
+            GetRedisDb().KeyDelete(_key);
+        }
+        public bool Contains(T item)
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                if (GetRedisDb().ListGetByIndex(_key, i).ToString().Equals(Serialize(item)))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            GetRedisDb().ListRange(_key).CopyTo(array, arrayIndex);
+        }
+        public int IndexOf(T item)
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                if (GetRedisDb().ListGetByIndex(_key, i).ToString().Equals(Serialize(item)))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        public int Count
+        {
+            get { return (int)GetRedisDb().ListLength(_key); }
+        }
+        public bool IsReadOnly
+        {
+            get { return false; }
+        }
+        public bool Remove(T item)
+        {
+            return GetRedisDb().ListRemove(_key, Serialize(item)) > 0;
+        }
+        public IEnumerator<T> GetEnumerator()
+        {
+            for (int i = 0; i < this.Count; i++)
+            {
+                yield return Deserialize<T>(GetRedisDb().ListGetByIndex(_key, i));
+            }
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            for (int i = 0; i < this.Count; i++)
+            {
+                yield return Deserialize<T>(GetRedisDb().ListGetByIndex(_key, i));
+            }
+        }
+    }
+}

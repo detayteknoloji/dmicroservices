@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\DMicroservices.csproj" />
+    <ProjectReference Include="..\..\DMicroservices\DMicroservices.csproj" />
   </ItemGroup>
 
 </Project>
