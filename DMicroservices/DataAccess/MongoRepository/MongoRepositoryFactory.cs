@@ -1,5 +1,4 @@
-﻿using DMicroservices.DataAccess.MongoRepository.Interfaces;
-using DMicroservices.DataAccess.MongoRepository.Settings;
+﻿using DMicroservices.DataAccess.MongoRepository.Settings;
 
 namespace DMicroservices.DataAccess.MongoRepository
 {
@@ -10,7 +9,7 @@ namespace DMicroservices.DataAccess.MongoRepository
             return new MongoRepository<T>();
         }
 
-        public static MongoRepository<T> CreateMongoRepository<T>(DatabaseSettings databaseSettings) where T : class, IMongoRepositoryCollection
+        public static MongoRepository<T> CreateMongoRepository<T>(DatabaseSettings databaseSettings) where T : class
         {
             return new MongoRepository<T>(databaseSettings);
         }
