@@ -23,7 +23,12 @@ namespace DMicroservices.DataAccess.MongoRepository
         private static Dictionary<string, MongoClient> MongoClients { get; set; } = new Dictionary<string, MongoClient>();
         private IMongoDatabase database;
 
-        public DatabaseSettings DatabaseSettings { get; set; } = new DatabaseSettings();
+        public DatabaseSettings DatabaseSettings { get; set; } = new DatabaseSettings()
+        {
+            ConnectionString = Environment.GetEnvironmentVariable("MONGO_URI"),
+            CollectionName = nameof(T),
+            DatabaseName = Environment.GetEnvironmentVariable("MONGO_DB_NAME")
+        };
 
 
         public IMongoCollection<T> CurrentCollection { get; set; }
@@ -41,12 +46,6 @@ namespace DMicroservices.DataAccess.MongoRepository
 
         public MongoRepository()
         {
-            Database = GetDatabase(DatabaseSettings);
-            if (Database.GetCollection<T>(typeof(T).Name) == null)
-            {
-                Database.CreateCollection(typeof(T).Name);
-            }
-
             CurrentCollection = GetCollection(DatabaseSettings);
         }
 
@@ -55,23 +54,24 @@ namespace DMicroservices.DataAccess.MongoRepository
             if (string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
                 dbSettings.ConnectionString = Environment.GetEnvironmentVariable("MONGO_URI");
             if (string.IsNullOrWhiteSpace(dbSettings.CollectionName))
-                dbSettings.CollectionName = typeof(T).Name;
+                dbSettings.CollectionName = nameof(T);
             if (string.IsNullOrWhiteSpace(dbSettings.DatabaseName))
                 dbSettings.DatabaseName = Environment.GetEnvironmentVariable("MONGO_DB_NAME");
 
             DatabaseSettings = dbSettings;
-            Database = GetDatabase(DatabaseSettings);
-            if (Database.GetCollection<T>(typeof(T).Name) == null)
-            {
-                Database.CreateCollection(typeof(T).Name);
-            }
 
             CurrentCollection = GetCollection(DatabaseSettings);
         }
 
         private IMongoCollection<T> GetCollection(IDatabaseSettings dbSettings)
         {
-            return GetDatabase(dbSettings).GetCollection<T>(typeof(T).Name);
+            Database = GetDatabase(DatabaseSettings);
+            if (Database.GetCollection<T>(DatabaseSettings.CollectionName) == null)
+            {
+                Database.CreateCollection(DatabaseSettings.CollectionName);
+            }
+
+            return Database.GetCollection<T>(DatabaseSettings.CollectionName);
         }
 
         private IMongoDatabase GetDatabase(IDatabaseSettings dbSettings)

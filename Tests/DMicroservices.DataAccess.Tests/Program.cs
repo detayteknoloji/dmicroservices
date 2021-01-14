@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using DMicroservices.DataAccess.MongoRepository;
-using DMicroservices.DataAccess.MongoRepository.Settings;
+﻿using DMicroservices.DataAccess.MongoRepository;
 using DMicroservices.DataAccess.Tests.Models;
 using DMicroservices.DataAccess.UnitOfWork;
-using DMicroservices.Utils.Extensions;
-using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -15,7 +11,16 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
+            using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
+            {
+                repo.Add(new Document()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Data = new byte[] { 1, 2, 3, 4, 5 }
+                });
 
+                var document = repo.GetAll(x => true).ToList();
+            }
 
             using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
             {
@@ -47,7 +52,7 @@ namespace DMicroservices.DataAccess.Tests
                     {
 
                     }
-                    else if (person is Teacher )
+                    else if (person is Teacher)
                     {
                         var teacher = (Teacher)person;
                     }
