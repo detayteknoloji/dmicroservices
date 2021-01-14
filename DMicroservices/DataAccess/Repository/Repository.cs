@@ -23,7 +23,7 @@ namespace DMicroservices.DataAccess.Repository
         /// </summary>
         /// <param name="dbContext">Veritabanı bağlantı nesnesi</param>
         public Repository(DbContext dbContext)
-        { 
+        {
             DbContext = dbContext;
             DbSet = dbContext.Set<T>();
         }
@@ -92,7 +92,10 @@ namespace DMicroservices.DataAccess.Repository
 
         public void Delete(Expression<Func<T, bool>> predicate, bool forceDelete = false)
         {
-            Delete(DbSet.First(predicate), forceDelete);
+            T model = DbSet.FirstOrDefault(predicate);
+
+            if (model != null)
+                Delete(model, forceDelete);
         }
 
         public T Get(Expression<Func<T, bool>> predicate)
