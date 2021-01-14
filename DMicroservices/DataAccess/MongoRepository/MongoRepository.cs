@@ -26,7 +26,7 @@ namespace DMicroservices.DataAccess.MongoRepository
         public DatabaseSettings DatabaseSettings { get; set; } = new DatabaseSettings()
         {
             ConnectionString = Environment.GetEnvironmentVariable("MONGO_URI"),
-            CollectionName = nameof(T),
+            CollectionName = typeof(T).Name,
             DatabaseName = Environment.GetEnvironmentVariable("MONGO_DB_NAME")
         };
 
@@ -54,7 +54,7 @@ namespace DMicroservices.DataAccess.MongoRepository
             if (string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
                 dbSettings.ConnectionString = Environment.GetEnvironmentVariable("MONGO_URI");
             if (string.IsNullOrWhiteSpace(dbSettings.CollectionName))
-                dbSettings.CollectionName = nameof(T);
+                dbSettings.CollectionName = typeof(T).Name;
             if (string.IsNullOrWhiteSpace(dbSettings.DatabaseName))
                 dbSettings.DatabaseName = Environment.GetEnvironmentVariable("MONGO_DB_NAME");
 
