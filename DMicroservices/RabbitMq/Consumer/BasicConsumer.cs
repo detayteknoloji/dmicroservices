@@ -56,7 +56,17 @@ namespace DMicroservices.RabbitMq.Consumer
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
         {
             var jsonData = Encoding.UTF8.GetString(e.Body.ToArray());
-            DataReceivedAction(JsonConvert.DeserializeObject<T>(jsonData), e);
+            try
+            {
+                var parsedData = JsonConvert.DeserializeObject<T>(jsonData);
+                DataReceivedAction(parsedData, e);
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, $"DocumentConsumer generic data received exception: {ex.Message}",
+                    jsonData);
+                _rabitMqChannel.BasicNack(e.DeliveryTag, false, false);
+            }
         }
 
         protected void BasicAck(ulong deliveryTag, bool multiple)

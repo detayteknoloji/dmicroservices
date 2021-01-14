@@ -70,6 +70,24 @@ namespace DMicroservices.Utils.Logger
 #endif
         }
 
+
+        public void Error(Exception ex, string messageTemplate, object trackObject)
+        {
+            if (messageTemplate == null)
+                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            else
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+
+            messageTemplate += " with Track object : {@trackObject}";
+
+            if (IsConfigured)
+                _log.Error(ex, messageTemplate, Convert.ToString(trackObject));
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
         public void Info(string messageTemplate)
         {
             if (messageTemplate == null)

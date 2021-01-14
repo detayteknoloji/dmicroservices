@@ -1938,7 +1938,7 @@
           "lib/netstandard1.3/System.Xml.XDocument.dll": {}
         }
       },
-      "DMicroservices/3.0.2": {
+      "DMicroservices/3.0.3": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v3.1",
         "dependencies": {
@@ -6777,7 +6777,7 @@
         "system.xml.xdocument.nuspec"
       ]
     },
-    "DMicroservices/3.0.2": {
+    "DMicroservices/3.0.3": {
       "type": "project",
       "path": "../../DMicroservices/DMicroservices.csproj",
       "msbuildProject": "../../DMicroservices/DMicroservices.csproj"
@@ -6785,7 +6785,7 @@
   },
   "projectFileDependencyGroups": {
     ".NETCoreApp,Version=v3.1": [
-      "DMicroservices >= 3.0.2",
+      "DMicroservices >= 3.0.3",
       "Microsoft.EntityFrameworkCore >= 5.0.1",
       "Microsoft.EntityFrameworkCore.Design >= 5.0.1",
       "Microsoft.EntityFrameworkCore.Tools >= 5.0.1",
