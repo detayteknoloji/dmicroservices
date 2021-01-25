@@ -4,6 +4,7 @@ using DMicroservices.DataAccess.UnitOfWork;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using StackExchange.Redis;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -11,17 +12,41 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
-            using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
+            //using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
+            //{
+            //    repo.Add(new Document()
+            //    {
+            //        Id = Guid.NewGuid().ToString(),
+            //        Data = new byte[] { 1, 2, 3, 4, 5 }
+            //    });
+
+            //    var document = repo.GetAll(x => true).ToList();
+            //}
+
+            try
             {
-                repo.Add(new Document()
+                using (var uow = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>(new UnitOfWorkSettings()
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    Data = new byte[] { 1, 2, 3, 4, 5 }
-                });
+                    ChangeDataCapture = true,
+                    ChangedUserPropertyName = "ChangedBy",
+                    IdPropertyName = "Id"
+                }))
+                {
+                    var ct = uow.GetRepository<City>().Get(x => x != null);
+                  
+                    uow.GetRepository<City>().Delete(ct);
+                    uow.SaveChanges();
+                }
 
-                var document = repo.GetAll(x => true).ToList();
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+           
 
+            return;
+            
             using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
             {
                 var city = new City() { Name = "sivas" };

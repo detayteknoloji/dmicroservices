@@ -20,5 +20,17 @@ namespace DMicroservices.DataAccess.UnitOfWork
                 return new UnitOfWork<T>("CompanyNo", companyNo);
             return new UnitOfWork<T>();
         }
+
+        public static UnitOfWork<T> CreateUnitOfWork<T>(UnitOfWorkSettings unitOfWorkSettings) where T : DbContext
+        {
+            return new UnitOfWork<T>(unitOfWorkSettings);
+        }
+
+        public static UnitOfWork<T> CreateUnitOfWork<T>(object companyNo, UnitOfWorkSettings unitOfWorkSettings) where T : DbContext
+        {
+            if (companyNo != null)
+                return new UnitOfWork<T>("CompanyNo", companyNo, unitOfWorkSettings);
+            return new UnitOfWork<T>(unitOfWorkSettings);
+        }
     }
 }

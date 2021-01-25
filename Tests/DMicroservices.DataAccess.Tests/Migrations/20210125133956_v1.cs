@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace DMicroservices.DataAccess.Tests.Migrations
 {
-    public partial class i : Migration
+    public partial class v1 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -27,17 +27,17 @@ namespace DMicroservices.DataAccess.Tests.Migrations
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     Name = table.Column<string>(type: "longtext CHARACTER SET utf8mb4", nullable: true),
-                    CityId = table.Column<long>(type: "bigint", nullable: true)
+                    ForeignCityId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Person", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Person_City_CityId",
-                        column: x => x.CityId,
+                        name: "FK_Person_City_ForeignCityId",
+                        column: x => x.ForeignCityId,
                         principalTable: "City",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -79,9 +79,9 @@ namespace DMicroservices.DataAccess.Tests.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Person_CityId",
+                name: "IX_Person_ForeignCityId",
                 table: "Person",
-                column: "CityId");
+                column: "ForeignCityId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
