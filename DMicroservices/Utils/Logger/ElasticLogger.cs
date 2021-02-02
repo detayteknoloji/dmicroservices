@@ -1,7 +1,10 @@
 ﻿using Serilog;
 using Serilog.Sinks.Elasticsearch;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 
 namespace DMicroservices.Utils.Logger
 {
@@ -88,6 +91,33 @@ namespace DMicroservices.Utils.Logger
 #endif
         }
 
+        public void Error(Exception ex, string messageTemplate, Dictionary<string, object> parameters)
+        {
+            if (messageTemplate == null)
+                return;
+
+            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+
+            stringBuilder.AppendLine($", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}");
+
+            if (IsConfigured)
+            {
+                foreach (var parameter in parameters)
+                {
+                    stringBuilder.Append("{");
+                    stringBuilder.Append(parameter.Key);
+                    stringBuilder.AppendLine("}");
+                }
+
+                _log.Error(ex, stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+            }
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
+
         public void Info(string messageTemplate)
         {
             if (messageTemplate == null)
@@ -97,6 +127,32 @@ namespace DMicroservices.Utils.Logger
 
             if (IsConfigured)
                 _log.Information(messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
+#endif
+        }
+
+        public void Info(string messageTemplate, Dictionary<string, object> parameters)
+        {
+            if (messageTemplate == null)
+                return;
+
+            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+
+            stringBuilder.AppendLine($", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}");
+
+            if (IsConfigured)
+            {
+                foreach (var parameter in parameters)
+                {
+                    stringBuilder.Append("{");
+                    stringBuilder.Append(parameter.Key);
+                    stringBuilder.AppendLine("}");
+                }
+
+                _log.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+            }
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
