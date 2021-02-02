@@ -3,11 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using DMicroservices.DataAccess.History;
 
 namespace DMicroservices.DataAccess.Repository
 {
     public interface IRepository<T> where T : class
     {
+
         /// <summary>
         /// Tüm veriyi getir.
         /// </summary>

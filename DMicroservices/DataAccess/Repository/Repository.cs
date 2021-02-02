@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using DMicroservices.DataAccess.History;
 using DMicroservices.Utils.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -149,6 +150,7 @@ namespace DMicroservices.DataAccess.Repository
         /// <param name="entity">Güncellenecek entity</param>
         public void Update(T entity)
         {
+
             DbSet.Attach(entity);
             DbContext.Entry(entity).State = EntityState.Modified;
         }
@@ -157,5 +159,6 @@ namespace DMicroservices.DataAccess.Repository
         {
             throw new NotImplementedException();
         }
+
     }
 }
