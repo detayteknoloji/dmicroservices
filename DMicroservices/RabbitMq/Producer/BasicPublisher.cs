@@ -90,6 +90,67 @@ namespace DMicroservices.RabbitMq.Producer
             }
         }
 
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        /// <param name="message">mesaj</param>
+        /// <param name="headers"></param>
+        /// <param name="priority"></param>
+        public void Publish(string queueName, T message, Dictionary<string, object> headers, byte priority)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Info("QueueName was null");
+                    return;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, 255))
+                {
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.Headers = headers;
+                    properties.Priority = priority;
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+        }
+
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        /// <param name="message">mesaj</param>
+        /// <param name="headers"></param>
+        /// <param name="priority"></param>
+        public void Publish(string queueName, T message, byte priority)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Info("QueueName was null");
+                    return;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, 255))
+                {
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.Priority = priority;
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+        }
+
         #endregion
     }
 }
