@@ -21,6 +21,11 @@ namespace DMicroservices.DataAccess.UnitOfWork
             return new UnitOfWork<T>();
         }
 
+        public static UnitOfWork<T> CreateUnitOfWork<T>(string filterPropertyName, object filterPropertyValue) where T : DbContext
+        {
+            return new UnitOfWork<T>(filterPropertyName, filterPropertyValue);
+        }
+
         public static UnitOfWork<T> CreateUnitOfWork<T>(UnitOfWorkSettings unitOfWorkSettings) where T : DbContext
         {
             return new UnitOfWork<T>(unitOfWorkSettings);
