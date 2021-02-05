@@ -52,7 +52,7 @@ namespace DMicroservices.Utils.Logger
                 _log.Error(ex, messageTemplate);
 
 #if DEBUG
-            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+            Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
 
@@ -69,7 +69,7 @@ namespace DMicroservices.Utils.Logger
                 _log.Error(ex, messageTemplate, companyNo);
 
 #if DEBUG
-            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+            Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
 
@@ -87,7 +87,7 @@ namespace DMicroservices.Utils.Logger
                 _log.Error(ex, messageTemplate, Convert.ToString(trackObject));
 
 #if DEBUG
-            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+            Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
 
@@ -113,7 +113,7 @@ namespace DMicroservices.Utils.Logger
             }
 
 #if DEBUG
-            Debug.WriteLine($"***********************************\nThrow an exception : {messageTemplate}\n{ex.StackTrace}***********************************\n");
+            Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
 

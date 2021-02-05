@@ -211,6 +211,20 @@ namespace DMicroservices.DataAccess.DynamicQuery
             {
                 if (filterProp.Type == typeof(Decimal))
                     filterValue = Expression.Constant(Decimal.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(int))
+                    filterValue = Expression.Constant(int.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(short))
+                    filterValue = Expression.Constant(short.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(Int64))
+                    filterValue = Expression.Constant(Int64.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(byte))
+                    filterValue = Expression.Constant(byte.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(DateTime))
+                    filterValue = Expression.Constant(DateTime.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(bool))
+                    filterValue = Expression.Constant(bool.Parse(filterItem.PropertyValue));
+                if (filterProp.Type == typeof(double))
+                    filterValue = Expression.Constant(double.Parse(filterItem.PropertyValue));
             }
 
             switch (filterItem.Operation)
