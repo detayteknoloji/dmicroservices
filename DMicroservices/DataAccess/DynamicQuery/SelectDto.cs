@@ -11,22 +11,18 @@ namespace DMicroservices.DataAccess.DynamicQuery
     /// <summary>
     /// Veri getirmek için kullanılan dto.
     /// </summary>
-    public class SelectDto<T,D> : IDisposable 
+    public class SelectDto<T, D> : IDisposable
         where T : class
         where D : DbContext
     {
         private ConstantExpression ZeroConstant = Expression.Constant(0);
+        private ConstantExpression OneConstant = Expression.Constant(1);
+        private ConstantExpression MinusOneConstant = Expression.Constant(-1);
         private ConstantExpression TrueConstant = Expression.Constant(true);
-        private MethodInfo CompareToMethod = typeof(string).GetMethod("CompareTo", new[] { typeof(string) });
-        private MethodInfo ContainsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
         private MethodInfo ToLowerMethod = typeof(String).GetMethod("ToLower", new Type[] { });
         private MethodInfo ToUpperMethod = typeof(String).GetMethod("ToUpper", new Type[] { });
 
 
-        private MethodInfo InMethod = OverloadedMethodFinder
-            .FindOverloadedMethodToCall("Contains", typeof(Enumerable), typeof(IEnumerable<string[]>),
-                typeof(string))
-            .MakeGenericMethod(typeof(string));
 
         private MethodCallExpression CalledExpression;
 
@@ -197,7 +193,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <returns></returns>
         private BinaryExpression GetBinaryExpression(ParameterExpression argParams, FilterItemDto filterItem)
         {
-            BinaryExpression filterExpression;
+            BinaryExpression filterExpression = null;
 
             Expression filterProp = Expression.Property(argParams, filterItem.PropertyName); //x.BKTX
 
@@ -206,55 +202,107 @@ namespace DMicroservices.DataAccess.DynamicQuery
             else if (filterItem.ConversionMethodName != null && filterItem.ConversionMethodName.Equals("ToUpper"))
                 filterProp = Expression.Call(filterProp, ToUpperMethod);
 
+            Type filterType = filterProp.Type;
+
             ConstantExpression filterValue = Expression.Constant(filterItem.PropertyValue);
-            if (filterProp.Type != typeof(string))
+
+            if (filterType.IsGenericType && filterType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                if (filterProp.Type == typeof(Decimal))
+                filterType = Nullable.GetUnderlyingType(filterProp.Type);
+            }
+
+            if (filterItem.PropertyValue == "null")
+            {
+                filterValue = Expression.Constant(null);
+            }
+            else if (filterType != typeof(string))
+            {
+                if (filterType == typeof(Decimal))
                     filterValue = Expression.Constant(Decimal.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(int))
+                else if (filterType == typeof(int))
                     filterValue = Expression.Constant(int.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(short))
+                else if (filterType == typeof(short))
                     filterValue = Expression.Constant(short.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(Int64))
+                else if (filterType == typeof(Int64))
                     filterValue = Expression.Constant(Int64.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(byte))
+                else if (filterType == typeof(byte))
                     filterValue = Expression.Constant(byte.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(DateTime))
+                else if (filterType == typeof(DateTime))
                     filterValue = Expression.Constant(DateTime.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(bool))
+                else if (filterType == typeof(bool))
                     filterValue = Expression.Constant(bool.Parse(filterItem.PropertyValue));
-                if (filterProp.Type == typeof(double))
+                else if (filterType == typeof(double))
                     filterValue = Expression.Constant(double.Parse(filterItem.PropertyValue));
+                else if (filterType == typeof(Guid))
+                    filterValue = Expression.Constant(Guid.Parse(filterItem.PropertyValue));
+                else if (filterType.BaseType == typeof(System.Enum))
+                    filterValue = Expression.Constant(System.Enum.Parse(filterProp.Type, filterItem.PropertyValue));
             }
 
             switch (filterItem.Operation)
             {
                 case "CT":
-                    CalledExpression =
-                        Expression.Call(filterProp, ContainsMethod, filterValue); // x.BKTX.ToUpper().Contains("xx")
-                    filterExpression = Expression.MakeBinary(ExpressionType.Equal, CalledExpression, TrueConstant);
-                    break;
+                    {
+                        MethodInfo ContainsMethod = filterType.GetMethod("Contains", new[] { filterType });
+                        CalledExpression = Expression.Call(filterProp, ContainsMethod, filterValue); // x.BKTX.ToUpper().Contains("xx")
+                        filterExpression = Expression.MakeBinary(ExpressionType.Equal, CalledExpression, TrueConstant);
+                        break;
+                    }
                 case "IN":
-                    filterValue = Expression.Constant(filterItem.PropertyValue.Split(','), typeof(IEnumerable<string>));
-                    CalledExpression = Expression.Call(InMethod, filterValue, filterProp);
-                    filterExpression = Expression.MakeBinary(ExpressionType.Equal, CalledExpression, TrueConstant);
-                    break;
+                    {
+                        foreach (var propertyValueItem in filterItem.PropertyValue.Split(','))
+                        {
+                            if (filterExpression != null)
+                                filterExpression = Expression.Or(filterExpression, Expression.Equal(filterProp, Expression.Constant(propertyValueItem)));
+                            else
+                                filterExpression = Expression.Equal(filterProp, Expression.Constant(propertyValueItem));
+                        }
+                        break;
+                    }
                 case "GT":
-                    CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
-                    filterExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, CalledExpression,
-                        ZeroConstant);
-                    break;
+                    {
+                        MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                        CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
+                        filterExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, CalledExpression,
+                            ZeroConstant);
+                        break;
+                    }
                 case "LT":
-                    CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
-                    filterExpression =
-                        Expression.MakeBinary(ExpressionType.LessThanOrEqual, CalledExpression, ZeroConstant);
-                    break;
+                    {
+                        MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                        CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
+                        filterExpression =
+                            Expression.MakeBinary(ExpressionType.LessThanOrEqual, CalledExpression, ZeroConstant);
+                        break;
+                    }
                 case "NE":
-                    filterExpression = Expression.NotEqual(filterProp, filterValue);
-                    break;
+                    {
+                        if (filterType == typeof(bool))
+                        {
+                            MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                            CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
+                            filterExpression = Expression.Or(Expression.MakeBinary(ExpressionType.Equal, CalledExpression, MinusOneConstant), Expression.MakeBinary(ExpressionType.Equal, CalledExpression, OneConstant));
+                        }
+                        else
+                        {
+                            filterExpression = Expression.NotEqual(filterProp, filterValue);
+                        }
+                        break;
+                    }
                 default:
-                    filterExpression = Expression.Equal(filterProp, filterValue);
-                    break;
+                    {
+                        if (filterType == typeof(bool))
+                        {
+                            MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                            CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
+                            filterExpression = Expression.And(Expression.MakeBinary(ExpressionType.NotEqual, CalledExpression, MinusOneConstant), Expression.MakeBinary(ExpressionType.NotEqual, CalledExpression, OneConstant));
+                        }
+                        else
+                        {
+                            filterExpression = Expression.Equal(filterProp, filterValue);
+                        }
+                        break;
+                    }
             }
 
             return filterExpression;

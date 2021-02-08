@@ -1,11 +1,11 @@
-﻿using DMicroservices.DataAccess.MongoRepository;
+﻿using DMicroservices.DataAccess.DynamicQuery;
 using DMicroservices.DataAccess.Tests.Models;
 using DMicroservices.DataAccess.UnitOfWork;
+using DMicroservices.Utils.Logger;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using StackExchange.Redis;
-using DMicroservices.Utils.Logger;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -13,6 +13,8 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
+            SelectDto_Test();
+
             //using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
             //{
             //    repo.Add(new Document()
@@ -105,6 +107,57 @@ namespace DMicroservices.DataAccess.Tests
             }
             Console.WriteLine("Hello World!");
             Console.ReadLine();
+        }
+
+        static void SelectDto_Test()
+        {
+            string selectDtoStringValue = "{\"Filter\":[{\"PropertyName\":\"StringValue\",\"Operation\":\"IN\",\"PropertyValue\":\"Str1,Str2\"}],\"FilterCompareType\":\"AND\",\"FilterCompareTypes\":[{\"Group\":\"gp\",\"Type\":\"OR\"}]}";
+
+            //selectDtoStringValue = "{\"Filter\":[{\"PropertyName\":\"IntValue\",\"Operation\":\"EQ\",\"PropertyValue\":100},{\"PropertyName\":\"BoolValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"false\"},{\"PropertyName\":\"BigIntValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"1001\"},{\"PropertyName\":\"StringValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"Str1\"},{\"PropertyName\":\"ByteValue\",\"Operation\":\"EQ\",\"PropertyValue\":254},{\"PropertyName\":\"DecimalValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"12.3\"},{\"PropertyName\":\"DoubleValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"17.5\"},{\"PropertyName\":\"EnumValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"2\"},{\"PropertyName\":\"SmallIntValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"10\"}],\"FilterCompareType\":\"AND\",\"FilterCompareTypes\":[{\"Group\":\"gp\",\"Type\":\"OR\"}]}";
+
+            SelectDto<Search, MasterContext> selectDtoString = JsonConvert.DeserializeObject<SelectDto<Search, MasterContext>>(selectDtoStringValue);
+
+            using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
+            {
+                uow.GetRepository<Search>().Add(new Search()
+                {
+                    StringValue = "Str1",
+                    IntValue = 100,
+                    BigIntValue = 1001,
+                    SmallIntValue = 10,
+                    BoolValue = false,
+                    ByteValue = 254,
+                    DateTimeValue = DateTime.Now.AddDays(-1),
+                    DecimalValue = 12.3m,
+                    DoubleValue = 17.5,
+                    EnumValue = Number.Two,
+                    GuidValue = Guid.NewGuid(),
+                    GuidNullableValue = Guid.NewGuid(),
+                    IntNullableValue = null
+                });
+
+                uow.GetRepository<Search>().Add(new Search()
+                {
+                    StringValue = "Str2",
+                    IntValue = 101,
+                    BigIntValue = 1002,
+                    SmallIntValue = 11,
+                    BoolValue = true,
+                    ByteValue = 255,
+                    DateTimeValue = DateTime.Now,
+                    DecimalValue = 16.3m,
+                    DoubleValue = 10.5,
+                    EnumValue = Number.One,
+                    GuidValue = Guid.NewGuid(),
+                    GuidNullableValue = null,
+                    IntNullableValue = 1
+                });
+
+                uow.SaveChanges();
+                //var allData = uow.GetRepository<Search>().GetAll(x => x.BoolValue == bool.Parse("false") && x.StringValue == "Str1").ToList();
+
+                var queryResult = selectDtoString.GetQueryObject(uow).ToList();
+            }
         }
     }
 }
