@@ -1,10 +1,10 @@
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using DMicroservices.Utils.Extensions;
-using Microsoft.EntityFrameworkCore;
 
 namespace DMicroservices.DataAccess.DynamicQuery
 {
@@ -202,48 +202,18 @@ namespace DMicroservices.DataAccess.DynamicQuery
             else if (filterItem.ConversionMethodName != null && filterItem.ConversionMethodName.Equals("ToUpper"))
                 filterProp = Expression.Call(filterProp, ToUpperMethod);
 
-            Type filterType = filterProp.Type;
+            ConstantExpression filterValue = Expression.Constant(null);
 
-            ConstantExpression filterValue = Expression.Constant(filterItem.PropertyValue);
-
-            if (filterType.IsGenericType && filterType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            if (filterItem.Operation != "IN")
             {
-                filterType = Nullable.GetUnderlyingType(filterProp.Type);
-            }
-
-            if (filterItem.PropertyValue == "null")
-            {
-                filterValue = Expression.Constant(null);
-            }
-            else if (filterType != typeof(string))
-            {
-                if (filterType == typeof(Decimal))
-                    filterValue = Expression.Constant(Decimal.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(int))
-                    filterValue = Expression.Constant(int.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(short))
-                    filterValue = Expression.Constant(short.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(Int64))
-                    filterValue = Expression.Constant(Int64.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(byte))
-                    filterValue = Expression.Constant(byte.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(DateTime))
-                    filterValue = Expression.Constant(DateTime.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(bool))
-                    filterValue = Expression.Constant(bool.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(double))
-                    filterValue = Expression.Constant(double.Parse(filterItem.PropertyValue));
-                else if (filterType == typeof(Guid))
-                    filterValue = Expression.Constant(Guid.Parse(filterItem.PropertyValue));
-                else if (filterType.BaseType == typeof(System.Enum))
-                    filterValue = Expression.Constant(System.Enum.Parse(filterProp.Type, filterItem.PropertyValue));
+                filterValue = GetConstanstValue(filterProp.Type, filterItem.PropertyValue);
             }
 
             switch (filterItem.Operation)
             {
                 case "CT":
                     {
-                        MethodInfo ContainsMethod = filterType.GetMethod("Contains", new[] { filterType });
+                        MethodInfo ContainsMethod = filterProp.Type.GetMethod("Contains", new[] { filterProp.Type });
                         CalledExpression = Expression.Call(filterProp, ContainsMethod, filterValue); // x.BKTX.ToUpper().Contains("xx")
                         filterExpression = Expression.MakeBinary(ExpressionType.Equal, CalledExpression, TrueConstant);
                         break;
@@ -252,34 +222,34 @@ namespace DMicroservices.DataAccess.DynamicQuery
                     {
                         foreach (var propertyValueItem in filterItem.PropertyValue.Split(','))
                         {
+                            filterValue = GetConstanstValue(filterProp.Type, propertyValueItem);
+
                             if (filterExpression != null)
-                                filterExpression = Expression.Or(filterExpression, Expression.Equal(filterProp, Expression.Constant(propertyValueItem)));
+                                filterExpression = Expression.Or(filterExpression, Expression.Equal(filterProp, filterValue));
                             else
-                                filterExpression = Expression.Equal(filterProp, Expression.Constant(propertyValueItem));
+                                filterExpression = Expression.Equal(filterProp, filterValue);
                         }
                         break;
                     }
                 case "GT":
                     {
-                        MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                        MethodInfo CompareToMethod = filterProp.Type.GetMethod("CompareTo", new[] { filterProp.Type });
                         CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
-                        filterExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, CalledExpression,
-                            ZeroConstant);
+                        filterExpression = Expression.MakeBinary(ExpressionType.GreaterThanOrEqual, CalledExpression, ZeroConstant);
                         break;
                     }
                 case "LT":
                     {
-                        MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                        MethodInfo CompareToMethod = filterProp.Type.GetMethod("CompareTo", new[] { filterProp.Type });
                         CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
-                        filterExpression =
-                            Expression.MakeBinary(ExpressionType.LessThanOrEqual, CalledExpression, ZeroConstant);
+                        filterExpression = Expression.MakeBinary(ExpressionType.LessThanOrEqual, CalledExpression, ZeroConstant);
                         break;
                     }
                 case "NE":
                     {
-                        if (filterType == typeof(bool))
+                        if (filterProp.Type == typeof(bool))
                         {
-                            MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                            MethodInfo CompareToMethod = filterProp.Type.GetMethod("CompareTo", new[] { filterProp.Type });
                             CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
                             filterExpression = Expression.Or(Expression.MakeBinary(ExpressionType.Equal, CalledExpression, MinusOneConstant), Expression.MakeBinary(ExpressionType.Equal, CalledExpression, OneConstant));
                         }
@@ -291,9 +261,9 @@ namespace DMicroservices.DataAccess.DynamicQuery
                     }
                 default:
                     {
-                        if (filterType == typeof(bool))
+                        if (filterProp.Type == typeof(bool))
                         {
-                            MethodInfo CompareToMethod = filterType.GetMethod("CompareTo", new[] { filterType });
+                            MethodInfo CompareToMethod = filterProp.Type.GetMethod("CompareTo", new[] { filterProp.Type });
                             CalledExpression = Expression.Call(filterProp, CompareToMethod, filterValue);
                             filterExpression = Expression.And(Expression.MakeBinary(ExpressionType.NotEqual, CalledExpression, MinusOneConstant), Expression.MakeBinary(ExpressionType.NotEqual, CalledExpression, OneConstant));
                         }
@@ -373,6 +343,20 @@ namespace DMicroservices.DataAccess.DynamicQuery
 
             return Expression.Lambda<Func<T, object>>
                 (Expression.Convert(Expression.Property(param, sortProperty.Name), sortProperty.PropertyType), param);
+        }
+
+        /// <summary>
+        /// Expression karşılaştırma sabitini getirir.
+        /// </summary>
+        /// <returns></returns>
+        private ConstantExpression GetConstanstValue(Type filterType, string propertyValue)
+        {
+            if (string.IsNullOrWhiteSpace(propertyValue) || string.IsNullOrEmpty(propertyValue))
+                return Expression.Constant(null);
+
+            TypeConverter converter = TypeDescriptor.GetConverter(filterType);
+            object result = converter.ConvertFrom(propertyValue);
+            return Expression.Constant(result, filterType);
         }
 
         public SelectDto()
