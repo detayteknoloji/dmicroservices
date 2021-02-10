@@ -1,3 +1,4 @@
+using DMicroservices.Utils.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -154,6 +155,29 @@ namespace DMicroservices.DataAccess.DynamicQuery
         public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null)
         {
             IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+            if (additionalExpression != null)
+                queryObject = queryObject.Where(additionalExpression);
+            if (Sort != null)
+            {
+                IOrderedQueryable<T> orderedQueryable = (IOrderedQueryable<T>)queryObject;
+                for (int i = 0; i < Sort.Count; i++)
+                {
+                    orderedQueryable = i == 0 ? GetOrderQueryable(queryObject, Sort[i]) : GetOrderQueryable(orderedQueryable, Sort[i]);
+                }
+                queryObject = orderedQueryable;
+            }
+            return queryObject;
+        }
+
+        /// <summary>
+        /// Sorgu nesnesini ilişkileriyle, filtrelenmiş ve sıralanmış olarak oluşturur.
+        /// </summary>
+        /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
+        /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
+        /// <returns></returns>
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        {
+            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
