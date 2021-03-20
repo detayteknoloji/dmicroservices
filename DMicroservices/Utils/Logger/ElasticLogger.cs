@@ -176,6 +176,9 @@ namespace DMicroservices.Utils.Logger
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
                 loggerConfiguration.Enrich.WithProperty("PodName", Environment.GetEnvironmentVariable("POD_NAME"));
 
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HOSTNAME")))
+                loggerConfiguration.Enrich.WithProperty("PodId", Environment.GetEnvironmentVariable("HOSTNAME"));
+
             _log = loggerConfiguration.CreateLogger();
 
             IsConfigured = true;
