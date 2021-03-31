@@ -22,6 +22,7 @@ namespace DMicroservices.DataAccess.Redis
             ConfigurationOptions options = ConfigurationOptions.Parse(Domain);
             Connection = ConnectionMultiplexer.Connect(options);
             RedisDatabase = Connection.GetDatabase();
+            MessagePackSerializer.DefaultOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
         }
 
         public static RedisManager Instance => _instance.Value;
@@ -287,7 +288,6 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public byte[] Serialize<T>(T obj)
         {
-            MessagePackSerializer.DefaultOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
             return MessagePackSerializer.Serialize<T>(obj);
         }
 
