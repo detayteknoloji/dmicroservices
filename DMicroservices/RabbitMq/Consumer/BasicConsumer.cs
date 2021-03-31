@@ -20,6 +20,8 @@ namespace DMicroservices.RabbitMq.Consumer
 
         public virtual ushort PrefectCount { get; set; }
 
+        public virtual byte MaxPriority { get; set; } = 0;
+
         public virtual Action<T, BasicDeliverEventArgs> DataReceivedAction { get; }
 
         /// <summary>
@@ -37,7 +39,11 @@ namespace DMicroservices.RabbitMq.Consumer
                 {
                     ElasticLogger.Instance.Info("Consumer QueueName was null");
                 }
-                _rabitMqChannel = RabbitMqConnection.Instance.GetChannel(ListenQueueName);
+
+                _rabitMqChannel = MaxPriority > 0
+                    ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority)
+                    : RabbitMqConnection.Instance.GetChannel(ListenQueueName);
+
                 if (PrefectCount != 0)
                     _rabitMqChannel.BasicQos(0, PrefectCount, false);
 

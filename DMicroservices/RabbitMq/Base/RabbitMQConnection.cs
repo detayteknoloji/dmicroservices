@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using DMicroservices.Utils.Logger;
 using RabbitMQ.Client;
 
@@ -77,7 +78,21 @@ namespace DMicroservices.RabbitMq.Base
         public IModel GetChannel(string queueName)
         {
             IModel channel = Connection.CreateModel();
-            channel.QueueDeclare(queueName, true, false, false, null);
+            channel.QueueDeclare(queueName, true, false, false,null);
+            return channel;
+        }
+
+        /// <summary>
+        /// Channel oluşturup döner
+        /// </summary>
+        /// <returns></returns>
+        public IModel GetChannel(string queueName, byte maxPriority)
+        {
+            IModel channel = Connection.CreateModel();
+            channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
+            {
+                {"x-max-priority", maxPriority}
+            });
             return channel;
         }
 
