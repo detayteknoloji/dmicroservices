@@ -244,8 +244,19 @@ namespace DMicroservices.DataAccess.DynamicQuery
                     }
                 case "IN":
                     {
-                        foreach (var propertyValueItem in filterItem.PropertyValue.Split(','))
+                        var filterItemParts = filterItem.PropertyValue.Split(',').ToList();
+                        if (filterItemParts.Any(string.IsNullOrEmpty))
                         {
+                            int emptyIndex = filterItemParts.FindIndex(string.IsNullOrEmpty);
+                            string temp = filterItemParts[^1];
+                            filterItemParts[^1] = filterItemParts[emptyIndex];
+                            filterItemParts[emptyIndex] = temp;
+                        }
+
+                        foreach (var propertyValueItem in filterItemParts)
+
+                        {
+
                             filterValue = GetConstanstValue(filterProp.Type, propertyValueItem);
 
                             if (filterExpression != null)
