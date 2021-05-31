@@ -111,7 +111,7 @@ namespace DMicroservices.DataAccess.Tests
 
         static void SelectDto_Test()
         {
-            string selectDtoStringValue = "{\"Filter\":[{\"PropertyName\":\"StringValue\",\"Operation\":\"IN\",\"PropertyValue\":\"Str1,Str2\"}],\"FilterCompareType\":\"AND\",\"FilterCompareTypes\":[{\"Group\":\"gp\",\"Type\":\"OR\"}]}";
+            string selectDtoStringValue = "{\"Filter\":[{\"PropertyName\":\"StringValue\",\"Operation\":\"IN\",\"PropertyValue\":\"Str1,Str2\"}],\"FilterCompareType\":\"AND\",\"FilterCompareTypes\":[{\"Group\":\"gp\",\"Type\":\"OR\"}],\"TakeCount\":1,\"SkipCount\":1}";
 
             //selectDtoStringValue = "{\"Filter\":[{\"PropertyName\":\"IntValue\",\"Operation\":\"EQ\",\"PropertyValue\":100},{\"PropertyName\":\"BoolValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"false\"},{\"PropertyName\":\"BigIntValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"1001\"},{\"PropertyName\":\"StringValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"Str1\"},{\"PropertyName\":\"ByteValue\",\"Operation\":\"EQ\",\"PropertyValue\":254},{\"PropertyName\":\"DecimalValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"12.3\"},{\"PropertyName\":\"DoubleValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"17.5\"},{\"PropertyName\":\"EnumValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"2\"},{\"PropertyName\":\"SmallIntValue\",\"Operation\":\"EQ\",\"PropertyValue\":\"10\"}],\"FilterCompareType\":\"AND\",\"FilterCompareTypes\":[{\"Group\":\"gp\",\"Type\":\"OR\"}]}";
 
