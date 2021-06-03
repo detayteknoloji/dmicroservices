@@ -166,6 +166,13 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 }
                 queryObject = orderedQueryable;
             }
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(SkipCount + TakeCount);
+
+            if (SkipCount > 0)
+                queryObject = queryObject.Skip(SkipCount);
+
             return queryObject;
         }
 
@@ -189,6 +196,13 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 }
                 queryObject = orderedQueryable;
             }
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(SkipCount + TakeCount);
+
+            if (SkipCount > 0)
+                queryObject = queryObject.Skip(SkipCount);
+
             return queryObject;
         }
 
