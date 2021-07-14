@@ -8,7 +8,8 @@
         "MONGO_DB_NAME": "DMicroservices",
         "THROW_UNIT_OF_WORK_ERROR": true,
         "ELASTIC_URI": "http://localhost:13030",
-        "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}"
+        "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}",
+        "REDIS_URL": "localhost:13036"
       }
     }
   }

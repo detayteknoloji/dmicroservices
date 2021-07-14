@@ -1,4 +1,5 @@
 ﻿using DMicroservices.DataAccess.DynamicQuery;
+using DMicroservices.DataAccess.Redis;
 using DMicroservices.DataAccess.Tests.Models;
 using DMicroservices.DataAccess.UnitOfWork;
 using DMicroservices.Utils.Logger;
@@ -14,6 +15,21 @@ namespace DMicroservices.DataAccess.Tests
         static void Main(string[] args)
         {
             SelectDto_Test();
+
+            var testRedisList = new RedisList<Search>("Test");
+            List<Search> searches = new List<Search>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                searches.Add(new Search()
+                {
+                    IntValue = i
+                });
+            }
+
+            testRedisList.AddRange(searches);
+
+            var getSearches = testRedisList.Where(x => x.IntValue == 3).ToList();
 
             //using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
             //{

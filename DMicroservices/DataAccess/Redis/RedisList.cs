@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using StackExchange.Redis;
 
@@ -64,6 +65,22 @@ namespace DMicroservices.DataAccess.Redis
         {
             GetRedisDb().ListRightPush(_key, Serialize(item));
         }
+        public void Add(T item, TimeSpan expireTime)
+        {
+            GetRedisDb().ListRightPush(_key, Serialize(item));
+
+            GetRedisDb().KeyExpire(_key, expireTime);
+        }
+        public void AddRange(IEnumerable<T> collection, TimeSpan? expireTime = null)
+        {
+            GetRedisDb().ListRightPush(_key, collection.Select(x => (RedisValue)Serialize(x)).ToArray());
+
+            if (expireTime == null)
+                expireTime = new TimeSpan(0, 10, 0);
+
+            GetRedisDb().KeyExpire(_key, expireTime);
+        }
+
         public void Clear()
         {
             GetRedisDb().KeyDelete(_key);
