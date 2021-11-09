@@ -352,14 +352,78 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <returns></returns>
         private IOrderedQueryable<T> GetOrderQueryable(IQueryable<T> queryable, OrderItemDto orderItem)
         {
-            IOrderedQueryable<T> orderedQueryable = null;
+            return SwitchType(queryable, orderItem);
+        }
 
+        /// <summary>
+        /// Sıralanmış Queryble nesnesini getirir.
+        /// </summary> 
+        /// <returns></returns>
+        private IOrderedQueryable<T> GetOrderQueryable(IOrderedQueryable<T> queryable, OrderItemDto orderItem)
+        {
+            if (!string.IsNullOrEmpty(orderItem.Column))
+            {
+                var switchType = SwitchType(queryable, orderItem);
+                queryable = switchType;
+            }
+            return queryable;
+        }
+
+        /// <summary>
+        /// Sıralamak için BinaryExpression oluştururup döndürür.
+        /// </summary>
+        /// <returns></returns>
+        private Expression<Func<T, TKey>> GetOrderBinaryExpression <TKey>(string columnName)
+        {
+            string paramName = string.Format("{0}_SORT", columnName);
+            var param = Expression.Parameter(typeof(T), paramName);
+
+            PropertyInfo sortProperty = typeof(T).GetProperty(columnName);
+            if (sortProperty == null)
+                sortProperty = typeof(T).GetProperties().First();
+
+            return Expression.Lambda<Func<T, TKey>>
+                (Expression.Convert(Expression.Property(param, sortProperty.Name), sortProperty.PropertyType), param);
+        }
+
+        /// <summary>
+        /// Expression karşılaştırma sabitini getirir.
+        /// </summary>
+        /// <returns></returns>
+        private ConstantExpression GetConstanstValue(Type filterType, string propertyValue)
+        {
+            if (string.IsNullOrWhiteSpace(propertyValue) || string.IsNullOrEmpty(propertyValue))
+                return Expression.Constant(null);
+
+            TypeConverter converter = TypeDescriptor.GetConverter(filterType);
+            object result = converter.ConvertFrom(propertyValue);
+            return Expression.Constant(result, filterType);
+        }
+
+        public SelectDto()
+        {
+            if (string.IsNullOrEmpty(LayoutLanguage))
+                LayoutLanguage = "T";
+        }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
+            GC.Collect();
+        }
+        private IOrderedQueryable<T> SwitchType(IQueryable<T> queryable, OrderItemDto orderItem)
+        {
+            IOrderedQueryable<T> orderedQueryable = null;
             PropertyInfo sortProperty = typeof(T).GetProperty(orderItem.Column);
             if (sortProperty == null)
                 sortProperty = typeof(T).GetProperties().First();
             var type = sortProperty.PropertyType.Name;
-            var typeEnum = (TypePropertyEnum)System.Enum.Parse(typeof(TypePropertyEnum), type);
+            if (type == "Nullable`1")
+            {
+                type = sortProperty.Name;
+            }
 
+            var typeEnum = (TypePropertyEnum)System.Enum.Parse(typeof(TypePropertyEnum), type);
             switch (typeEnum)
             {
                 case TypePropertyEnum.Byte:
@@ -459,172 +523,26 @@ namespace DMicroservices.DataAccess.DynamicQuery
                     else
                         orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<DateTime>(orderItem.Column));
                     break;
+                case TypePropertyEnum.DateTimeNullableValue:
+                    if (orderItem.Descending)
+                        orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<DateTime?>(orderItem.Column));
+                    else
+                        orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<DateTime?>(orderItem.Column));
+                    break;
+                case TypePropertyEnum.IntNullableValue:
+                    if (orderItem.Descending)
+                        orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<int?>(orderItem.Column));
+                    else
+                        orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<int?>(orderItem.Column));
+                    break;
+                case TypePropertyEnum.ByteNullableValue:
+                    if (orderItem.Descending)
+                        orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<byte?>(orderItem.Column));
+                    else
+                        orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<byte?>(orderItem.Column));
+                    break;
             }
-
             return orderedQueryable;
-        }
-
-        /// <summary>
-        /// Sıralanmış Queryble nesnesini getirir.
-        /// </summary> 
-        /// <returns></returns>
-        private IOrderedQueryable<T> GetOrderQueryable(IOrderedQueryable<T> queryable, OrderItemDto orderItem)
-        {
-            if (!string.IsNullOrEmpty(orderItem.Column))
-            {
-                PropertyInfo sortProperty = typeof(T).GetProperty(orderItem.Column);
-                if (sortProperty == null)
-                    sortProperty = typeof(T).GetProperties().First();
-
-                var type = sortProperty.PropertyType.Name;
-                var typeEnum = (TypePropertyEnum)System.Enum.Parse(typeof(TypePropertyEnum), type);
-
-                switch (typeEnum)
-                {
-                    case TypePropertyEnum.Byte:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<byte>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<byte>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Sbyte:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<sbyte>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<sbyte>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Short:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<short>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<short>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Ushort:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<ushort>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<ushort>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Int32:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<int>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<int>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Uint:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<uint>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<uint>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Long:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<long>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<long>(orderItem.Column));
-                        break;
-
-                    case TypePropertyEnum.Ulong:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<ulong>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<ulong>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Float:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<float>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<float>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Double:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<double>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<double>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Decimal:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<decimal>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<decimal>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Char:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<char>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<char>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Boolean:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<bool>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<bool>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.Object:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<object>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<object>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.String:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<string>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<string>(orderItem.Column));
-                        break;
-                    case TypePropertyEnum.DateTime:
-                        if (orderItem.Descending)
-                            queryable = queryable.ThenByDescending(GetOrderBinaryExpression<DateTime>(orderItem.Column));
-                        else
-                            queryable = queryable.ThenBy(GetOrderBinaryExpression<DateTime>(orderItem.Column));
-                        break;
-                    
-                }
-            }
-            return queryable;
-        }
-
-        /// <summary>
-        /// Sıralamak için BinaryExpression oluştururup döndürür.
-        /// </summary>
-        /// <returns></returns>
-        private Expression<Func<T, TKey>> GetOrderBinaryExpression <TKey>(string columnName)
-        {
-            string paramName = string.Format("{0}_SORT", columnName);
-            var param = Expression.Parameter(typeof(T), paramName);
-
-            PropertyInfo sortProperty = typeof(T).GetProperty(columnName);
-            if (sortProperty == null)
-                sortProperty = typeof(T).GetProperties().First();
-
-            return Expression.Lambda<Func<T, TKey>>
-                (Expression.Convert(Expression.Property(param, sortProperty.Name), sortProperty.PropertyType), param);
-        }
-
-        /// <summary>
-        /// Expression karşılaştırma sabitini getirir.
-        /// </summary>
-        /// <returns></returns>
-        private ConstantExpression GetConstanstValue(Type filterType, string propertyValue)
-        {
-            if (string.IsNullOrWhiteSpace(propertyValue) || string.IsNullOrEmpty(propertyValue))
-                return Expression.Constant(null);
-
-            TypeConverter converter = TypeDescriptor.GetConverter(filterType);
-            object result = converter.ConvertFrom(propertyValue);
-            return Expression.Constant(result, filterType);
-        }
-
-        public SelectDto()
-        {
-            if (string.IsNullOrEmpty(LayoutLanguage))
-                LayoutLanguage = "T";
-        }
-
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            GC.Collect();
         }
     }
 }
