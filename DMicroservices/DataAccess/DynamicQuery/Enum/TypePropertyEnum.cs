@@ -22,7 +22,11 @@ namespace DMicroservices.DataAccess.DynamicQuery.Enum
         Boolean = 12,
         Object = 13,
         String = 14,
-        DateTime =15
+        DateTime =15,
+        DateTimeNullableValue = 16,
+        IntNullableValue = 17,
+        ByteNullableValue = 18
+
 
 
     }
