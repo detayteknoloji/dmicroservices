@@ -373,7 +373,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// Sıralamak için BinaryExpression oluştururup döndürür.
         /// </summary>
         /// <returns></returns>
-        private Expression<Func<T, TKey>> GetOrderBinaryExpression <TKey>(string columnName)
+        private Expression<Func<T, TKey>> GetOrderBinaryExpression<TKey>(string columnName)
         {
             string paramName = string.Format("{0}_SORT", columnName);
             var param = Expression.Parameter(typeof(T), paramName);
@@ -414,13 +414,19 @@ namespace DMicroservices.DataAccess.DynamicQuery
         private IOrderedQueryable<T> SwitchType(IQueryable<T> queryable, OrderItemDto orderItem)
         {
             IOrderedQueryable<T> orderedQueryable = null;
+            string nullable = "Nullable";
             PropertyInfo sortProperty = typeof(T).GetProperty(orderItem.Column);
             if (sortProperty == null)
                 sortProperty = typeof(T).GetProperties().First();
             var type = sortProperty.PropertyType.Name;
-            if (type == "Nullable`1")
+
+            var propertyType = sortProperty.PropertyType;
+
+            if (propertyType.IsGenericType &&
+                    propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                type = sortProperty.Name;
+                propertyType = propertyType.GetGenericArguments()[0];
+                type = propertyType.Name+nullable;
             }
 
             var typeEnum = (TypePropertyEnum)System.Enum.Parse(typeof(TypePropertyEnum), type);
@@ -523,19 +529,19 @@ namespace DMicroservices.DataAccess.DynamicQuery
                     else
                         orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<DateTime>(orderItem.Column));
                     break;
-                case TypePropertyEnum.DateTimeNullableValue:
+                case TypePropertyEnum.DateTimeNullable:
                     if (orderItem.Descending)
                         orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<DateTime?>(orderItem.Column));
                     else
                         orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<DateTime?>(orderItem.Column));
                     break;
-                case TypePropertyEnum.IntNullableValue:
+                case TypePropertyEnum.Int32Nullable:
                     if (orderItem.Descending)
                         orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<int?>(orderItem.Column));
                     else
                         orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<int?>(orderItem.Column));
                     break;
-                case TypePropertyEnum.ByteNullableValue:
+                case TypePropertyEnum.ByteNullable:
                     if (orderItem.Descending)
                         orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<byte?>(orderItem.Column));
                     else
