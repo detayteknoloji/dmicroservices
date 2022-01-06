@@ -98,6 +98,13 @@ namespace DMicroservices.DataAccess.Repository
             if (model != null)
                 Delete(model, forceDelete);
         }
+        public void BulkDelete(List<T> entityList)
+        {
+            foreach (var t in entityList)
+            {
+                DbSet.Remove(t);
+            }
+        }
 
         public T Get(Expression<Func<T, bool>> predicate)
         {

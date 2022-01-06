@@ -109,6 +109,11 @@ namespace DMicroservices.DataAccess.Repository
         /// <param name="predicate"></param>
         void Delete(Expression<Func<T, bool>> predicate, bool forceDelete = false);
 
+        /// <summary>
+        /// Verilen entityi sil.
+        /// </summary>
+        /// <param name="entityList"></param>
+        void BulkDelete(List<T> entityList);
 
         /// <summary>
         /// Aynı kayıt eklememek için objeyi kontrol ederek true veya false dönderir.
