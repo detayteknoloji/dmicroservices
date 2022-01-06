@@ -117,6 +117,16 @@ namespace DMicroservices.DataAccess.Repository
                 Delete(model, forceDelete);
         }
 
+        public void BulkDelete(List<T> entityList)
+        {
+            foreach (var entity in entityList)
+            {
+                if (FilterProperty != null)
+                    FilterProperty.SetValue(entity, FilterColumnValue);
+                DbSet.Remove(entity);
+            }
+        }
+
         public T Get(Expression<Func<T, bool>> predicate)
         {
             IQueryable<T> iQueryable = DbSet.Where(GetFilterExpression())

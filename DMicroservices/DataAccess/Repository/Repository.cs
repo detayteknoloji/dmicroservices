@@ -36,9 +36,9 @@ namespace DMicroservices.DataAccess.Repository
 
         public void BulkInsert(List<T> entityList)
         {
-            foreach (var t in entityList)
+            foreach (var entity in entityList)
             {
-                DbSet.Add(t);
+                DbSet.Add(entity);
             }
         }
 
@@ -97,6 +97,13 @@ namespace DMicroservices.DataAccess.Repository
 
             if (model != null)
                 Delete(model, forceDelete);
+        }
+        public void BulkDelete(List<T> entityList)
+        {
+            foreach (var entity in entityList)
+            {
+                DbSet.Remove(entity);
+            }
         }
 
         public T Get(Expression<Func<T, bool>> predicate)
