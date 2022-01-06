@@ -36,9 +36,9 @@ namespace DMicroservices.DataAccess.Repository
 
         public void BulkInsert(List<T> entityList)
         {
-            foreach (var t in entityList)
+            foreach (var entity in entityList)
             {
-                DbSet.Add(t);
+                DbSet.Add(entity);
             }
         }
 
@@ -100,9 +100,9 @@ namespace DMicroservices.DataAccess.Repository
         }
         public void BulkDelete(List<T> entityList)
         {
-            foreach (var t in entityList)
+            foreach (var entity in entityList)
             {
-                DbSet.Remove(t);
+                DbSet.Remove(entity);
             }
         }
 
