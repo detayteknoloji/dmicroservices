@@ -134,7 +134,8 @@ namespace DMicroservices.DataAccess.Redis
             if (Exists(key))
             {
                 byte[] obj = RedisDatabase.StringGet(key);
-                return Deserialize<T>(obj);
+                if (obj?.Length > 0)
+                    return Deserialize<T>(obj);
             }
 
             return default(T);
