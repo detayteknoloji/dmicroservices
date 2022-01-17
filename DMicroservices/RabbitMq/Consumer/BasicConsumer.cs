@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading;
 using DMicroservices.RabbitMq.Base;
 using DMicroservices.Utils.Logger;
 using Newtonsoft.Json;
@@ -27,11 +28,16 @@ namespace DMicroservices.RabbitMq.Consumer
         /// <summary>
         /// Modeli dinlemek için kullanıclan event
         /// </summary>
-        private readonly EventingBasicConsumer _eventingBasicConsumer;
+        private EventingBasicConsumer _eventingBasicConsumer;
 
-        private readonly IModel _rabitMqChannel;
+        private IModel _rabitMqChannel;
 
         protected BasicConsumer()
+        {
+            InitializeConsumer();
+        }
+
+        private void InitializeConsumer()
         {
             try
             {
@@ -50,13 +56,23 @@ namespace DMicroservices.RabbitMq.Consumer
                 _eventingBasicConsumer = new EventingBasicConsumer(_rabitMqChannel);
                 _eventingBasicConsumer.Received += DocumentConsumerOnReceived;
                 _rabitMqChannel.BasicConsume(ListenQueueName, AutoAck, _eventingBasicConsumer);
+                _rabitMqChannel.ModelShutdown += (sender, args) =>
+                {
+                    ElasticLogger.Instance.Error(new Exception(args.ToString()), "RabbitMQ/Shutdown");
+                    ThreadPool.QueueUserWorkItem(RabbitMqChannelShutdown);
+                };
             }
             catch (Exception ex)
             {
                 ElasticLogger.Instance.Error(ex, "RabbitMQ/RabbitmqConsumer");
             }
+        }
 
-
+        private void RabbitMqChannelShutdown(object? state)
+        {
+            _rabitMqChannel = null;
+            Thread.Sleep(5000);
+            InitializeConsumer();
         }
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)

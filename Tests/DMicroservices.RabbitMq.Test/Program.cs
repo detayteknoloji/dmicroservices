@@ -9,9 +9,9 @@ namespace DMicroservices.RabbitMq.Test
         static void Main(string[] args)
         {
 
-            ConsumerRegistry.Instance.Register(typeof(ExampleModel));
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
 
-            RabbitMqPublisher<ExampleModel>.Instance.Publish("Test",new ExampleModel()
+            RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
             {
                 Message = "hello world."
             });

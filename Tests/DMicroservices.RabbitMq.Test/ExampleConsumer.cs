@@ -8,7 +8,7 @@ namespace DMicroservices.RabbitMq.Test
     {
         public override string ListenQueueName => "ExampleQueue";
 
-        public override bool AutoAck => true;
+        public override bool AutoAck => false;
 
         public override Action<ExampleModel, BasicDeliverEventArgs> DataReceivedAction => DataReceived;
 
