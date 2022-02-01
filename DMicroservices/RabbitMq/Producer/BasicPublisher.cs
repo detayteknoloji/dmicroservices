@@ -40,25 +40,28 @@ namespace DMicroservices.RabbitMq.Producer
         /// </summary>
         /// <param name="queueName">kuyruk adı</param>
         /// <param name="message">mesaj</param>
-        public void Publish(string queueName, T message)
+        public uint Publish(string queueName, T message)
         {
             try
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
                     ElasticLogger.Instance.Info("QueueName was null");
-                    return;
+                    return 0;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
                 {
                     string jsonData = JsonConvert.SerializeObject(message);
                     channel.BasicPublish(string.Empty, queueName, null, Encoding.UTF8.GetBytes(jsonData));
+                    return channel.MessageCount(queueName);
                 }
             }
             catch (Exception ex)
             {
                 ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
             }
+
+            return 0;
         }
 
         /// <summary>
@@ -149,6 +152,33 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
             }
+        }
+
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        /// <param name="message">mesaj</param>
+        public uint MessageCount(string queueName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Info("QueueName was null");
+                    return 0;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    return channel.MessageCount(queueName);
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+
+            return 0;
         }
 
         #endregion
