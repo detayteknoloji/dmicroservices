@@ -158,7 +158,6 @@ namespace DMicroservices.RabbitMq.Producer
         /// Aldığı mesajı aldığı kuyruğa yazar
         /// </summary>
         /// <param name="queueName">kuyruk adı</param>
-        /// <param name="message">mesaj</param>
         public uint MessageCount(string queueName)
         {
             try
@@ -169,6 +168,32 @@ namespace DMicroservices.RabbitMq.Producer
                     return 0;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    return channel.MessageCount(queueName);
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        public uint MessageCount(string queueName, byte priority)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Info("QueueName was null");
+                    return 0;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, priority))
                 {
                     return channel.MessageCount(queueName);
                 }
