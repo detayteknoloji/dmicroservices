@@ -30,6 +30,11 @@ namespace DMicroservices.RabbitMq.Consumer
         /// </summary>
         private EventingBasicConsumer _eventingBasicConsumer;
 
+        /// <summary>
+        /// bu consumer tekrar initialize edilebilir mi?
+        /// </summary>
+        private bool _cantBeReInitilaze = false;
+
         private IModel _rabitMqChannel;
 
         protected BasicConsumer()
@@ -71,6 +76,9 @@ namespace DMicroservices.RabbitMq.Consumer
         private void RabbitMqChannelShutdown(object? state)
         {
             _rabitMqChannel = null;
+            if (_cantBeReInitilaze)
+                return;
+
             Thread.Sleep(5000);
             InitializeConsumer();
         }
@@ -99,6 +107,18 @@ namespace DMicroservices.RabbitMq.Consumer
         protected EventingBasicConsumer GetCurrentConsumer()
         {
             return _eventingBasicConsumer;
+        }
+
+        /// <summary>
+        /// basicconsumer.received removed on dispose and wait 30sec. then rmqchannel will be disposed.
+        /// </summary>
+        public void Dispose()
+        {
+            _eventingBasicConsumer.Received -= DocumentConsumerOnReceived;
+            Thread.Sleep(TimeSpan.FromSeconds(15));
+            _cantBeReInitilaze = true;
+            _rabitMqChannel?.Dispose();
+            _rabitMqChannel = null;
         }
     }
 }
