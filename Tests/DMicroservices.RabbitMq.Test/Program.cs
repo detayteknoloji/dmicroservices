@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Producer;
 
@@ -8,12 +9,35 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
+            //BasicPublishTest();
+            ExchangePublishTest();
+        }
 
-            ConsumerRegistry.Instance.Register(typeof(ExampleModel));
+        static void BasicPublishTest()
+        {
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
 
-            RabbitMqPublisher<ExampleModel>.Instance.Publish("Test",new ExampleModel()
+            ThreadPool.QueueUserWorkItem(delegate
             {
-                Message = "hello world."
+                RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
+                {
+                    Message = "hello world."
+                });
+            });
+
+            Console.ReadLine();
+        }
+
+        static void ExchangePublishTest()
+        {
+            ConsumerRegistry.Instance.Register(typeof(ExchangeConsumer));
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                RabbitMqPublisher<ExampleModel>.Instance.PublishExchange("ExampleExchange", "", new ExampleModel()
+                {
+                    Message = "hello world."
+                });
             });
 
             Console.ReadLine();
