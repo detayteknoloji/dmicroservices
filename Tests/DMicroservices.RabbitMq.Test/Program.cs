@@ -9,30 +9,38 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
+            //BasicPublishTest();
+            ExchangePublishTest();
+        }
+
+        static void BasicPublishTest()
+        {
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
 
             ThreadPool.QueueUserWorkItem(delegate
             {
-                for (int i = 0; i < 100; i++)
+                RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
                 {
-                    RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
-                    {
-                        Message = "hello world."
-                    });
-
-                    Thread.Sleep(500);
-                }
+                    Message = "hello world."
+                });
             });
 
-            //register
-
             Console.ReadLine();
+        }
 
-            //unregister
-            ConsumerRegistry.Instance.UnRegister(typeof(ExampleConsumer));
+        static void ExchangePublishTest()
+        {
+            ConsumerRegistry.Instance.Register(typeof(ExchangeConsumer));
 
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                RabbitMqPublisher<ExampleModel>.Instance.PublishExchange("ExampleExchange", "", new ExampleModel()
+                {
+                    Message = "hello world."
+                });
+            });
+          
             Console.ReadLine();
-
         }
     }
 }

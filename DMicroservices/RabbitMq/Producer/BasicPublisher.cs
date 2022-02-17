@@ -157,29 +157,60 @@ namespace DMicroservices.RabbitMq.Producer
         /// <summary>
         /// Aldığı mesajı aldığı kuyruğa yazar
         /// </summary>
-        /// <param name="queueName">kuyruk adı</param>
-        public uint MessageCount(string queueName)
+        /// <param name="exchangeName">Exchange adı</param>
+        /// <param name="key">Exchange için anahtar kelime</param>
+        /// <param name="message">mesaj</param>
+        public void PublishExchange(string exchangeName, string key, T message)
         {
             try
             {
-                if (string.IsNullOrEmpty(queueName))
+                if (string.IsNullOrEmpty(exchangeName) || key == null)
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
-                    return 0;
+                    ElasticLogger.Instance.Info("ExchangeName or Key was null");
+                    return;
                 }
-                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                using (IModel channel = RabbitMqConnection.Instance.Connection.CreateModel())
                 {
-                    return channel.MessageCount(queueName);
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    channel.BasicPublish(exchangeName, key, null, Encoding.UTF8.GetBytes(jsonData));
                 }
             }
             catch (Exception ex)
             {
                 ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
             }
-
-            return 0;
         }
 
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="exchangeName">Exchange adı</param>
+        /// <param name="key">Exchange için anahtar kelime</param>
+        /// <param name="message">mesaj</param>
+        /// <param name="headers">Header exchange için key value nesnesi</param>
+        public void PublishExchange(string exchangeName, string key, T message, Dictionary<string, object> headers)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(exchangeName) || key == null || headers == null)
+                {
+                    ElasticLogger.Instance.Info("ExchangeName, Key or Headers was null");
+                    return;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.Connection.CreateModel())
+                {
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.Headers = headers;
+                    channel.BasicPublish(exchangeName, key, properties, Encoding.UTF8.GetBytes(jsonData));
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+        }
+                    
         /// <summary>
         /// Aldığı mesajı aldığı kuyruğa yazar
         /// </summary>
