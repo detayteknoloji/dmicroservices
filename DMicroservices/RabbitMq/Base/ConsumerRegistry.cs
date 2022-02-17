@@ -39,6 +39,17 @@ namespace DMicroservices.RabbitMq.Base
             {
                 ElasticLogger.Instance.Error(e, $"ConsumerRegistry throw an error : {e.Message}");
             }
+        }
+
+        public void UnRegister(Type consumer)
+        {
+
+            if (ConsumerList.Any(x => x.GetType() != consumer))
+                throw new Exception("Consumer not registered.");
+
+            var consumerObject = ConsumerList.First(y => y.GetType() == consumer);
+            consumerObject.Dispose();
+            ConsumerList.Remove(consumerObject);
 
         }
 

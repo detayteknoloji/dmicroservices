@@ -39,7 +39,7 @@ namespace DMicroservices.RabbitMq.Test
                     Message = "hello world."
                 });
             });
-
+          
             Console.ReadLine();
         }
     }
