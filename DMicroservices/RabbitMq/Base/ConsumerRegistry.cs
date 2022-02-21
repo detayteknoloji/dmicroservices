@@ -43,14 +43,19 @@ namespace DMicroservices.RabbitMq.Base
 
         public void UnRegister(Type consumer)
         {
+            var consumerObject = ConsumerList.FirstOrDefault(x => x.GetType() == consumer);
 
-            if (ConsumerList.Any(x => x.GetType() != consumer))
+            if (consumerObject == null)
                 throw new Exception("Consumer not registered.");
 
-            var consumerObject = ConsumerList.First(y => y.GetType() == consumer);
             consumerObject.Dispose();
             ConsumerList.Remove(consumerObject);
+        }
 
+        public void ClearAllRegisters()
+        {
+            ConsumerList.ForEach(x => x.Dispose());
+            ConsumerList = null;
         }
 
         #endregion
