@@ -14,22 +14,22 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
-            SelectDto_Test();
+            //SelectDto_Test();
 
-            var testRedisList = new RedisList<Search>("Test");
-            List<Search> searches = new List<Search>();
+            //var testRedisList = new RedisList<Search>("Test");
+            //List<Search> searches = new List<Search>();
 
-            for (int i = 0; i < 10; i++)
-            {
-                searches.Add(new Search()
-                {
-                    IntValue = i
-                });
-            }
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    searches.Add(new Search()
+            //    {
+            //        IntValue = i
+            //    });
+            //}
 
-            testRedisList.AddRange(searches);
+            //testRedisList.AddRange(searches);
 
-            var getSearches = testRedisList.Where(x => x.IntValue == 3).ToList();
+            //var getSearches = testRedisList.Where(x => x.IntValue == 3).ToList();
 
             //using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
             //{
@@ -42,26 +42,24 @@ namespace DMicroservices.DataAccess.Tests
             //    var document = repo.GetAll(x => true).ToList();
             //}
 
-            //try
-            //{
-            //    using (var uow = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>(new UnitOfWorkSettings()
-            //    {
-            //        ChangeDataCapture = true,
-            //        ChangedUserPropertyName = "ChangedBy",
-            //        IdPropertyName = "Id"
-            //    }))
-            //    {
-            //        var ct = uow.GetRepository<City>().Get(x => x != null);
+            try
+            {
+                using (var uow = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
+                {
+                    var ct = uow.GetRepository<City>().Get(x => x != null);
 
-            //        uow.GetRepository<City>().Delete(ct);
-            //        uow.SaveChanges();
-            //    }
+                    //uow.GetRepository<City>().Delete(ct);
+                    //uow.SaveChanges();
 
-            //}
-            //catch (Exception e)
-            //{
-            //    Console.WriteLine(e);
-            //}
+                    var cta = uow.GetReadonlyRepository<City>().Get(x => x != null);
+
+                }
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
 
 
             //return;

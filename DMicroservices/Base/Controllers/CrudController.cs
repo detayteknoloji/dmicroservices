@@ -13,7 +13,7 @@ namespace DMicroservices.Base.Controllers
     /// This controller contains only base CRUD operations.
     /// </summary>
     public class CrudController<T, D> : Controller
-        where D : DbContext
+        where D : DbContext, ICustomDbContext
         where T : class
     {
 

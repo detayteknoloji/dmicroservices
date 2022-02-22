@@ -10,28 +10,28 @@ namespace DMicroservices.DataAccess.UnitOfWork
 {
     public static class UnitOfWorkFactory
     {
-        public static UnitOfWork<T> CreateUnitOfWork<T>() where T : DbContext
+        public static UnitOfWork<T> CreateUnitOfWork<T>() where T : DbContext, ICustomDbContext
         {
             return new UnitOfWork<T>();
         }
-        public static UnitOfWork<T> CreateUnitOfWork<T>(object companyNo) where T : DbContext
+        public static UnitOfWork<T> CreateUnitOfWork<T>(object companyNo) where T : DbContext, ICustomDbContext
         {
             if (companyNo != null)
                 return new UnitOfWork<T>("CompanyNo", companyNo);
             return new UnitOfWork<T>();
         }
 
-        public static UnitOfWork<T> CreateUnitOfWork<T>(string filterPropertyName, object filterPropertyValue) where T : DbContext
+        public static UnitOfWork<T> CreateUnitOfWork<T>(string filterPropertyName, object filterPropertyValue) where T : DbContext, ICustomDbContext
         {
             return new UnitOfWork<T>(filterPropertyName, filterPropertyValue);
         }
 
-        public static UnitOfWork<T> CreateUnitOfWork<T>(UnitOfWorkSettings unitOfWorkSettings) where T : DbContext
+        public static UnitOfWork<T> CreateUnitOfWork<T>(UnitOfWorkSettings unitOfWorkSettings) where T : DbContext, ICustomDbContext
         {
             return new UnitOfWork<T>(unitOfWorkSettings);
         }
 
-        public static UnitOfWork<T> CreateUnitOfWork<T>(object companyNo, UnitOfWorkSettings unitOfWorkSettings) where T : DbContext
+        public static UnitOfWork<T> CreateUnitOfWork<T>(object companyNo, UnitOfWorkSettings unitOfWorkSettings) where T : DbContext, ICustomDbContext
         {
             if (companyNo != null)
                 return new UnitOfWork<T>("CompanyNo", companyNo, unitOfWorkSettings);
