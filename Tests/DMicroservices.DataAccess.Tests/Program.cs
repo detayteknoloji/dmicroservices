@@ -15,6 +15,11 @@ namespace DMicroservices.DataAccess.Tests
         static void Main(string[] args)
         {
             //SelectDto_Test();
+            //using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
+            //{
+            //    DynamicQuery.SelectDto<City, MasterContext> asd = new DynamicQuery.SelectDto<City, MasterContext>();
+            //    var cities = asd.GetQueryObject(repo,readonlyRepo:false).ToList();
+            //}
 
             //var testRedisList = new RedisList<Search>("Test");
             //List<Search> searches = new List<Search>();
