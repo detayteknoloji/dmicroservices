@@ -3,7 +3,8 @@
     "DMicroservices.DataAccess.Tests": {
       "commandName": "Project",
       "environmentVariables": {
-        "MYSQL_URI": "server=localhost;port=13034;database=xyz;user=root;password=root;Max Pool Size=200;Min Pool Size=10;Pooling=true",
+        "MYSQL_URI": "server=localhost;port=13038;database=xyz;user=root;password=root;Max Pool Size=200;Min Pool Size=10;Pooling=true",
+        "MYSQL_RO_URI": "server=localhost;port=13038;database=xyz;user=root;password=root;Max Pool Size=200;Min Pool Size=10;Pooling=true",
         "MONGO_URI": "mongodb://root:root@127.0.0.1:13033/?maxPoolSize=150&minPoolSize=25",
         "MONGO_DB_NAME": "DMicroservices",
         "THROW_UNIT_OF_WORK_ERROR": true,

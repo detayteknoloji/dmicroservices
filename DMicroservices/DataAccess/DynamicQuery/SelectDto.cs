@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using DMicroservices.DataAccess.UnitOfWork;
 
 namespace DMicroservices.DataAccess.DynamicQuery
 {
@@ -15,7 +16,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
     /// </summary>
     public class SelectDto<T, D> : IDisposable
         where T : class
-        where D : DbContext
+        where D : DbContext, ICustomDbContext
     {
         private ConstantExpression ZeroConstant = Expression.Constant(0);
         private ConstantExpression OneConstant = Expression.Constant(1);

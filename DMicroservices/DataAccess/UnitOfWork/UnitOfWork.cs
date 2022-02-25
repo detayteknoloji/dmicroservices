@@ -15,11 +15,12 @@ using Newtonsoft.Json;
 namespace DMicroservices.DataAccess.UnitOfWork
 {
     public class UnitOfWork<T> : IDisposable, IUnitOfWork
-        where T : DbContext
+        where T : DbContext, ICustomDbContext
     {
         #region Members
 
         private DbContext dbContext;
+        private DbContext readonlyDbContext;
         private bool disposed = false;
         private bool filteredRepository = false;
         public string FilterColumnName { get; set; }
@@ -50,10 +51,45 @@ namespace DMicroservices.DataAccess.UnitOfWork
                 if (dbContext == null)
                 {
                     dbContext = (DbContext)Activator.CreateInstance(typeof(T));
+                    if (dbContext != null)
+                    {
+                        var propertyInfo = dbContext.GetType().GetProperty("MYSQL_URI");
+                        if (propertyInfo != null)
+                        {
+                            string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
+                            propertyInfo.SetValue( dbContext, mysqlUri);
+                        }
+                    }
                 }
                 return dbContext;
             }
-            set { dbContext = value; }
+            set => dbContext = value;
+        }
+
+        /// <summary>
+        /// Açılan veri bağlantısı.
+        /// </summary>
+        private DbContext ReadonlyDbContext
+        {
+            get
+            {
+                if (readonlyDbContext == null)
+                {
+                    readonlyDbContext = (DbContext)Activator.CreateInstance(typeof(T));
+                    if (readonlyDbContext != null)
+                    {
+                        var propertyInfo = readonlyDbContext.GetType().GetProperty("MYSQL_URI");
+                        if (propertyInfo != null)
+                        {
+                            string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
+                            var mysqlReadonlyUri = Environment.GetEnvironmentVariable("MYSQL_RO_URI");
+                            propertyInfo.SetValue(readonlyDbContext, string.IsNullOrEmpty(mysqlReadonlyUri) ? mysqlUri : mysqlReadonlyUri);
+                        }
+                    }
+                }
+                return readonlyDbContext;
+            }
+            set => readonlyDbContext = value;
         }
 
         #endregion
@@ -102,13 +138,21 @@ namespace DMicroservices.DataAccess.UnitOfWork
         /// <summary>
         /// Repository instance'ı başlatmak için kullanılır.
         /// </summary>
-        /// <typeparam name="T">Veri Tabanı Tür Nesnesi</typeparam>
-        /// <returns>Tür nesnesi ile ilgili Repository</returns>
         public IRepository<T> GetRepository<T>() where T : class
         {
             if (filteredRepository)
                 return new FilteredRepository<T>(DbContext, FilterColumnName, FilterColumnValue);
             return new Repository<T>(DbContext);
+        }
+
+        /// <summary>
+        /// Repository instance'ı başlatmak için kullanılır.
+        /// </summary>
+        public IRepository<T> GetReadonlyRepository<T>() where T : class
+        {
+            if (filteredRepository)
+                return new FilteredReadonlyRepository<T>(ReadonlyDbContext, FilterColumnName, FilterColumnValue);
+            return new ReadonlyRepository<T>(ReadonlyDbContext);
         }
 
         /// <summary>
@@ -273,6 +317,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
         #region Members
 
         private DbContext dbContext;
+        private DbContext readonlyDbContext;
         private bool disposed = false;
         private bool filteredRepository = false;
         public string FilterColumnName { get; set; }
@@ -305,11 +350,47 @@ namespace DMicroservices.DataAccess.UnitOfWork
                 if (dbContext == null)
                 {
                     dbContext = (DbContext)Activator.CreateInstance(DbContextType);
+                    if (dbContext != null)
+                    {
+                        var propertyInfo = dbContext.GetType().GetProperty("MYSQL_URI");
+                        if (propertyInfo != null)
+                        {
+                            string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
+                            propertyInfo.SetValue(dbContext,mysqlUri);
+                        }
+                    }
                 }
                 return dbContext;
             }
-            set { dbContext = value; }
+            set => dbContext = value;
         }
+
+        /// <summary>
+        /// Açılan veri bağlantısı.
+        /// </summary>
+        private DbContext ReadonlyDbContext
+        {
+            get
+            {
+                if (readonlyDbContext == null)
+                {
+                    readonlyDbContext = (DbContext)Activator.CreateInstance(DbContextType);
+                    if (readonlyDbContext != null)
+                    {
+                        var propertyInfo = readonlyDbContext.GetType().GetProperty("MYSQL_URI");
+                        if (propertyInfo != null)
+                        {
+                            string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
+                            var mysqlReadonlyUri = Environment.GetEnvironmentVariable("MYSQL_RO_URI");
+                            propertyInfo.SetValue(readonlyDbContext, string.IsNullOrEmpty(mysqlReadonlyUri) ? mysqlUri : mysqlReadonlyUri);
+                        }
+                    }
+                }
+                return readonlyDbContext;
+            }
+            set => readonlyDbContext = value;
+        }
+
 
         #endregion
 
@@ -323,7 +404,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
             DbContextType = dbContextType;
         }
 
-        public UnitOfWork(UnitOfWorkSettings unitOfWorkSettings,Type dbContextType)
+        public UnitOfWork(UnitOfWorkSettings unitOfWorkSettings, Type dbContextType)
         {
             DbContextType = dbContextType;
             _unitOfWorkSettings = unitOfWorkSettings;
@@ -363,6 +444,13 @@ namespace DMicroservices.DataAccess.UnitOfWork
         /// <typeparam name="T">Veri Tabanı Tür Nesnesi</typeparam>
         /// <returns>Tür nesnesi ile ilgili Repository</returns>
         public IRepository<T> GetRepository<T>() where T : class
+        {
+            if (filteredRepository)
+                return new FilteredRepository<T>(DbContext, FilterColumnName, FilterColumnValue);
+            return new Repository<T>(DbContext);
+        }
+
+        public IRepository<T> GetReadonlyRepository<T>() where T : class
         {
             if (filteredRepository)
                 return new FilteredRepository<T>(DbContext, FilterColumnName, FilterColumnValue);
@@ -525,5 +613,5 @@ namespace DMicroservices.DataAccess.UnitOfWork
         }
         #endregion
     }
-    
+
 }

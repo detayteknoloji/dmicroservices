@@ -14,7 +14,7 @@ namespace DMicroservices.Base.Controllers
     /// This controller contains only base CRUD operations.
     /// </summary>
     public class IdentityCrudController<T, TD> : Controller
-        where TD : DbContext
+        where TD : DbContext, ICustomDbContext
         where T : class
     {
 
