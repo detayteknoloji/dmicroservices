@@ -154,9 +154,14 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
-            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression());
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
@@ -184,9 +189,14 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
-            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
@@ -214,9 +224,14 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, Expression<Func<T, bool>> additionalExpression = null)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
-            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression());
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
@@ -244,9 +259,14 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
-            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
