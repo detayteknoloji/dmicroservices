@@ -154,7 +154,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = true)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
             IQueryable<T> queryObject;
             if (readonlyRepo)
@@ -189,7 +189,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = true)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
             IQueryable<T> queryObject;
             if (readonlyRepo)
@@ -224,7 +224,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = true)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
             IQueryable<T> queryObject;
             if (readonlyRepo)
@@ -259,7 +259,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = true)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
             IQueryable<T> queryObject;
             if (readonlyRepo)
