@@ -10,7 +10,7 @@ namespace DMicroservices.RabbitMq.Test
     {
         public override string ListenQueueName => "ExampleQueue";
 
-        public override ExchangeContent ExchangeContent => new ExchangeContent() { Name = "ExampleExchange", Type = ExchangeType.Fanout };
+        public override ExchangeContent ExchangeContent => new ExchangeContent() { ExchangeName = "ExampleExchange", ExchangeType = ExchangeType.Fanout };
 
         public override bool AutoAck => false;
 
