@@ -9,13 +9,14 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
-            //BasicPublishTest();
-            ExchangePublishTest();
+            BasicPublishTest();
+            //ExchangePublishTest();
         }
 
         static void BasicPublishTest()
         {
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            ConsumerRegistry.Instance.ClearAllRegisters();
 
             ThreadPool.QueueUserWorkItem(delegate
             {
@@ -39,7 +40,7 @@ namespace DMicroservices.RabbitMq.Test
                     Message = "hello world."
                 });
             });
-          
+
             Console.ReadLine();
         }
     }
