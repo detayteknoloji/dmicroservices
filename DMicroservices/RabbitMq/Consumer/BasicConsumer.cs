@@ -56,7 +56,7 @@ namespace DMicroservices.RabbitMq.Consumer
 
                 if (ExchangeContent != null)
                 {
-                    if (ExchangeContent.Key == null || string.IsNullOrEmpty(ExchangeContent.Name) || string.IsNullOrEmpty(ExchangeContent.Type))
+                    if (ExchangeContent.RoutingKey == null || string.IsNullOrEmpty(ExchangeContent.ExchangeName) || string.IsNullOrEmpty(ExchangeContent.ExchangeType))
                         throw new Exception("ExchangeContent contains null object(s)!");
                     _rabitMqChannel = RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName);
                 }

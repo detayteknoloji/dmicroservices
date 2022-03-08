@@ -21,6 +21,7 @@ namespace DMicroservices.RabbitMq.Base
         }
 
         public static ConsumerRegistry Instance => _instance.Value;
+        #endregion
 
         public void Register(Type consumer)
         {
@@ -55,9 +56,7 @@ namespace DMicroservices.RabbitMq.Base
         public void ClearAllRegisters()
         {
             ConsumerList.ForEach(x => x.Dispose());
-            ConsumerList = null;
+            ConsumerList = new List<IConsumer>();
         }
-
-        #endregion
     }
 }

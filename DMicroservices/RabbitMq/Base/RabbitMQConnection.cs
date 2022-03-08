@@ -104,9 +104,9 @@ namespace DMicroservices.RabbitMq.Base
         public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName)
         {
             IModel channel = Connection.CreateModel();
-            channel.ExchangeDeclare(exchangeContent.Name, exchangeContent.Type);
+            channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
             channel.QueueDeclare(queueName, true, false, false);
-            channel.QueueBind(queueName, exchangeContent.Name, exchangeContent.Key, exchangeContent.Headers);
+            channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
             return channel;
         }
 
