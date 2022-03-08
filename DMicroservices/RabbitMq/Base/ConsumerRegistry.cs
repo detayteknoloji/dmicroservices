@@ -53,10 +53,13 @@ namespace DMicroservices.RabbitMq.Base
             ConsumerList.Remove(consumerObject);
         }
 
-        public void ClearAllRegisters()
+        public void ClearAllRegisters(params Type[] consumerIgnores)
         {
-            ConsumerList.ForEach(x => x.Dispose());
-            ConsumerList = new List<IConsumer>();
+            if (consumerIgnores == null)
+                throw new Exception("ConsumerIgnores cannot be null.");
+
+            List<IConsumer> consumerList = ConsumerList.Where(x => !consumerIgnores.Any(m => x.GetType() == m)).ToList();
+            consumerList.ForEach(x => UnRegister(x.GetType()));
         }
     }
 }
