@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Producer;
@@ -15,11 +16,18 @@ namespace DMicroservices.RabbitMq.Test
 
         static void BasicPublishTest()
         {
+            Debug.WriteLine("all register");
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
-            Console.ReadLine();
-            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
+            
+            Debug.WriteLine("clear all");
             ConsumerRegistry.Instance.ClearAllRegisters();
+            
 
+            Debug.WriteLine("all register");
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
+            Console.WriteLine("ok");
 
             //ThreadPool.QueueUserWorkItem(delegate
             //{

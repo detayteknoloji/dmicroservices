@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace DMicroservices.RabbitMq.Consumer
 {
-    public interface IConsumer : IDisposable
+    public interface IConsumer 
     {
         string ListenQueueName { get;}
 
@@ -10,6 +11,8 @@ namespace DMicroservices.RabbitMq.Consumer
 
         ushort PrefectCount { get; set; }
 
-        new void Dispose(bool cantBeReInitilaze);
+        Task StartConsume();
+
+        Task StopConsume();
     }
 }

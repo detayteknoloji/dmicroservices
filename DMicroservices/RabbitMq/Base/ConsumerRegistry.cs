@@ -12,14 +12,14 @@ namespace DMicroservices.RabbitMq.Base
 {
     public class ConsumerRegistry
     {
-        private List<IConsumer> ConsumerList { get; set; }
+        private Dictionary<Type, IConsumer> Consumers { get; set; }
 
         #region Singleton Section
         private static readonly Lazy<ConsumerRegistry> _instance = new Lazy<ConsumerRegistry>(() => new ConsumerRegistry());
 
         private ConsumerRegistry()
         {
-            ConsumerList = new List<IConsumer>();
+            Consumers = new Dictionary<Type, IConsumer>();
         }
 
         public static ConsumerRegistry Instance => _instance.Value;
@@ -30,17 +30,20 @@ namespace DMicroservices.RabbitMq.Base
             if (consumer.GetInterfaces().Length == 0 || consumer.GetInterfaces().Any(x => x.GetInterface("IConsumer") != null))
                 throw new Exception("Consumer must be implement IConsumer.");
 
-            if (ConsumerList.Any(x => x.GetType() == consumer))
-                throw new Exception("Consumer already registered.");
-
             try
             {
-                var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
-
-                lock (ConsumerList)
+                if (Consumers.All(keyValue => keyValue.Key != consumer))
                 {
-                    ConsumerList.Add(consumerObject);
+                    //register
+                    var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
+
+                    lock (Consumers)
+                    {
+                        Consumers.Add(consumer, consumerObject);
+                    }
                 }
+                Consumers[consumer].StartConsume();
+
             }
             catch (Exception e)
             {
@@ -48,39 +51,26 @@ namespace DMicroservices.RabbitMq.Base
             }
         }
 
-        public Task UnRegister(Type consumer)
+        public void UnRegister(Type consumer)
         {
-            return new Task(() =>
+            lock (Consumers)
             {
-                IConsumer consumerObject;
-                lock (ConsumerList)
-                {
-                    consumerObject = ConsumerList.FirstOrDefault(x => x.GetType() == consumer);
-
-                    if (consumerObject == null)
-                        throw new Exception("Consumer not registered.");
-
-                    ConsumerList.Remove(consumerObject);
-                }
-                consumerObject.Dispose(true);
-
-            });
+                Consumers[consumer].StopConsume();
+            }
         }
 
         public void ClearAllRegisters(params Type[] consumerIgnores)
         {
-
-            List<IConsumer> consumerList = ConsumerList.Where(x => consumerIgnores != null && consumerIgnores.All(m => x.GetType() != m)).ToList();
-
-            List<Task> taskList = consumerList.ConvertAll(x =>
+            lock (Consumers)
             {
-                Task t = UnRegister(x.GetType());
-                t.Start();
-                return t;
-            });
+                var consumerList = Consumers
+                    .Where(x => consumerIgnores != null && consumerIgnores.All(m => x.GetType() != m)).ToList();
 
-            Task.WaitAll(taskList.ToArray());
-
+                foreach (var consumerItem in consumerList)
+                {
+                    consumerItem.Value.StopConsume();
+                }
+            }
         }
     }
 }

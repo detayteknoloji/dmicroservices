@@ -33,9 +33,10 @@ namespace DMicroservices.RabbitMq.Base
         #region Properties
 
         private static readonly object _lockObj = new object();
+
         public IConnection Connection { get; set; }
 
-        public bool IsConnected { get; set; } = false;
+        public bool IsConnected => Connection is {IsOpen: true};
 
         #endregion
 
@@ -57,10 +58,14 @@ namespace DMicroservices.RabbitMq.Base
                         return Connection;
                     ConnectionFactory connectionFactory = new ConnectionFactory
                     {
-                        Uri = new Uri(Environment.GetEnvironmentVariable("RABBITMQ_URI"))
+                        Uri = new Uri(Environment.GetEnvironmentVariable("RABBITMQ_URI")),
+                        AutomaticRecoveryEnabled = false
                     };
                     Connection = connectionFactory.CreateConnection();
-                    IsConnected = true;
+                    Connection.ConnectionShutdown += (sender, args) =>
+                    {
+
+                    };
                     return Connection;
                 }
             }
@@ -78,7 +83,7 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetChannel(string queueName)
         {
-            IModel channel = Connection.CreateModel();
+            IModel channel = GetConnection().CreateModel();
             channel.QueueDeclare(queueName, true, false, false, null);
             return channel;
         }
@@ -89,7 +94,7 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetChannel(string queueName, byte maxPriority)
         {
-            IModel channel = Connection.CreateModel();
+            IModel channel = GetConnection().CreateModel();
             channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
             {
                 {"x-max-priority", maxPriority}
@@ -103,7 +108,7 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName)
         {
-            IModel channel = Connection.CreateModel();
+            IModel channel = GetConnection().CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
             channel.QueueDeclare(queueName, true, false, false);
             channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
