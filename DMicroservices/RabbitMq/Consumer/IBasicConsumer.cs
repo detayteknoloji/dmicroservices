@@ -9,5 +9,7 @@ namespace DMicroservices.RabbitMq.Consumer
         bool AutoAck { get; }
 
         ushort PrefectCount { get; set; }
+
+        new void Dispose(bool cantBeReInitilaze);
     }
 }

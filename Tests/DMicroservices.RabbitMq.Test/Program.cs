@@ -16,15 +16,18 @@ namespace DMicroservices.RabbitMq.Test
         static void BasicPublishTest()
         {
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            Console.ReadLine();
+            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
             ConsumerRegistry.Instance.ClearAllRegisters();
 
-            ThreadPool.QueueUserWorkItem(delegate
-            {
-                RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
-                {
-                    Message = "hello world."
-                });
-            });
+
+            //ThreadPool.QueueUserWorkItem(delegate
+            //{
+            //    RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
+            //    {
+            //        Message = "hello world."
+            //    });
+            //});
 
             Console.ReadLine();
         }

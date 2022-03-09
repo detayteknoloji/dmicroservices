@@ -21,7 +21,7 @@ namespace DMicroservices.RabbitMq.Consumer
         public abstract bool AutoAck { get; }
 
         public virtual ushort PrefectCount { get; set; }
-
+       
         public virtual byte MaxPriority { get; set; } = 0;
 
         public virtual ExchangeContent ExchangeContent { get; set; }
@@ -75,8 +75,11 @@ namespace DMicroservices.RabbitMq.Consumer
                 _rabitMqChannel.BasicConsume(ListenQueueName, AutoAck, _eventingBasicConsumer);
                 _rabitMqChannel.ModelShutdown += (sender, args) =>
                 {
-                    ElasticLogger.Instance.Error(new Exception(args.ToString()), "RabbitMQ/Shutdown");
-                    ThreadPool.QueueUserWorkItem(RabbitMqChannelShutdown);
+                    if (args.ReplyCode != 200)
+                    {
+                        ElasticLogger.Instance.Error(new Exception(args.ToString()), "RabbitMQ/Shutdown");
+                        ThreadPool.QueueUserWorkItem(RabbitMqChannelShutdown);
+                    }
                 };
             }
             catch (Exception ex)
@@ -87,6 +90,14 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private void RabbitMqChannelShutdown(object? state)
         {
+            try
+            {
+                _rabitMqChannel.Close();
+            }
+            catch
+            {
+                //ignored
+            }
             _rabitMqChannel = null;
             if (_cantBeReInitilaze)
                 return;
@@ -123,7 +134,7 @@ namespace DMicroservices.RabbitMq.Consumer
 
         /// <summary>
         /// basicconsumer.received removed on dispose and wait 30sec. then rmqchannel will be disposed.
-        /// </summary>
+        /// </summary>%
         public void Dispose()
         {
             _eventingBasicConsumer.Received -= DocumentConsumerOnReceived;
@@ -132,5 +143,15 @@ namespace DMicroservices.RabbitMq.Consumer
             _rabitMqChannel?.Dispose();
             _rabitMqChannel = null;
         }
+
+        public void Dispose(bool cantBeReInitilaze)
+        {
+            _eventingBasicConsumer.Received -= DocumentConsumerOnReceived;
+            Thread.Sleep(TimeSpan.FromSeconds(15));
+            _cantBeReInitilaze = cantBeReInitilaze;
+            _rabitMqChannel?.Dispose();
+            _rabitMqChannel = null;
+        }
+
     }
 }

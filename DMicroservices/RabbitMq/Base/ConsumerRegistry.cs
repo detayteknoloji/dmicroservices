@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using DMicroservices.RabbitMq.Consumer;
 using DMicroservices.RabbitMq.Producer;
@@ -35,7 +36,11 @@ namespace DMicroservices.RabbitMq.Base
             try
             {
                 var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
-                ConsumerList.Add(consumerObject);
+
+                lock (ConsumerList)
+                {
+                    ConsumerList.Add(consumerObject);
+                }
             }
             catch (Exception e)
             {
@@ -43,25 +48,39 @@ namespace DMicroservices.RabbitMq.Base
             }
         }
 
-        public void UnRegister(Type consumer)
+        public Task UnRegister(Type consumer)
         {
-            var consumerObject = ConsumerList.FirstOrDefault(x => x.GetType() == consumer);
+            return new Task(() =>
+            {
+                IConsumer consumerObject;
+                lock (ConsumerList)
+                {
+                    consumerObject = ConsumerList.FirstOrDefault(x => x.GetType() == consumer);
 
-            if (consumerObject == null)
-                throw new Exception("Consumer not registered.");
+                    if (consumerObject == null)
+                        throw new Exception("Consumer not registered.");
 
-            consumerObject.Dispose();
-            ConsumerList.Remove(consumerObject);
+                    ConsumerList.Remove(consumerObject);
+                }
+                consumerObject.Dispose(true);
+
+            });
         }
 
         public void ClearAllRegisters(params Type[] consumerIgnores)
         {
-            if (consumerIgnores == null)
-                throw new Exception("ConsumerIgnores cannot be null.");
 
-            List<IConsumer> consumerList = ConsumerList.Where(x => !consumerIgnores.Any(m => x.GetType() == m)).ToList();
+            List<IConsumer> consumerList = ConsumerList.Where(x => consumerIgnores != null && consumerIgnores.All(m => x.GetType() != m)).ToList();
 
-            consumerList.ForEach(x => Task.Run(() => { UnRegister(x.GetType()); }));
+            List<Task> taskList = consumerList.ConvertAll(x =>
+            {
+                Task t = UnRegister(x.GetType());
+                t.Start();
+                return t;
+            });
+
+            Task.WaitAll(taskList.ToArray());
+
         }
     }
 }
