@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using DMicroservices.RabbitMq.Consumer;
 using DMicroservices.RabbitMq.Producer;
 using DMicroservices.Utils.Logger;
@@ -59,7 +60,8 @@ namespace DMicroservices.RabbitMq.Base
                 throw new Exception("ConsumerIgnores cannot be null.");
 
             List<IConsumer> consumerList = ConsumerList.Where(x => !consumerIgnores.Any(m => x.GetType() == m)).ToList();
-            consumerList.ForEach(x => UnRegister(x.GetType()));
+
+            consumerList.ForEach(x => Task.Run(() => { UnRegister(x.GetType()); }));
         }
     }
 }
