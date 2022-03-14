@@ -66,10 +66,13 @@ namespace DMicroservices.RabbitMq.Base
                 var consumerList = Consumers
                     .Where(x => consumerIgnores.All(m => x.Key.FullName != null && !x.Key.FullName.Equals(m.FullName))).ToList();
 
+                List<Task> stopConsumeTaskList = new List<Task>();
                 foreach (var consumerItem in consumerList)
                 {
-                    consumerItem.Value.StopConsume();
+                    stopConsumeTaskList.Add(consumerItem.Value.StopConsume());
                 }
+
+                Task.WaitAll(stopConsumeTaskList.ToArray());
             }
         }
     }

@@ -54,12 +54,18 @@ namespace DMicroservices.RabbitMq.Base
             {
                 lock (_lockObj)
                 {
+                    string hostName = Environment.GetEnvironmentVariable("HOSTNAME");
+                    if (string.IsNullOrEmpty(hostName))
+                    {
+                        hostName = Environment.GetEnvironmentVariable("COMPUTERNAME");
+                    }
                     if (IsConnected)
                         return Connection;
                     ConnectionFactory connectionFactory = new ConnectionFactory
                     {
                         Uri = new Uri(Environment.GetEnvironmentVariable("RABBITMQ_URI")),
-                        AutomaticRecoveryEnabled = false
+                        AutomaticRecoveryEnabled = false,
+                        ClientProvidedName = hostName
                     };
                     Connection = connectionFactory.CreateConnection();
                     Connection.ConnectionShutdown += (sender, args) =>
