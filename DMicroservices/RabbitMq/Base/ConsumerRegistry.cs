@@ -64,7 +64,7 @@ namespace DMicroservices.RabbitMq.Base
             lock (Consumers)
             {
                 var consumerList = Consumers
-                    .Where(x => consumerIgnores != null && consumerIgnores.All(m => x.GetType() != m)).ToList();
+                    .Where(x => consumerIgnores.All(m => x.Key.FullName != null && !x.Key.FullName.Equals(m.FullName))).ToList();
 
                 foreach (var consumerItem in consumerList)
                 {

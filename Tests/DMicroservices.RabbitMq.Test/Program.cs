@@ -21,13 +21,13 @@ namespace DMicroservices.RabbitMq.Test
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
             
             Debug.WriteLine("clear all");
-            ConsumerRegistry.Instance.ClearAllRegisters();
+            ConsumerRegistry.Instance.ClearAllRegisters(typeof(ExampleConsumer2));
             
 
-            Debug.WriteLine("all register");
-            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
-            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
-            Console.WriteLine("ok");
+            //Debug.WriteLine("all register");
+            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
+            //Console.WriteLine("ok");
 
             //ThreadPool.QueueUserWorkItem(delegate
             //{
