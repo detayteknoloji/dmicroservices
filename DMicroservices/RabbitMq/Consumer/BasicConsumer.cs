@@ -156,7 +156,7 @@ namespace DMicroservices.RabbitMq.Consumer
                         {
                             if (args.ReplyCode != 200)
                             {
-                                ElasticLogger.Instance.Error(new Exception(args.ToString()), "RabbitMQ/Shutdown");
+                                ElasticLogger.Instance.Error(new Exception($"{args} Queue: {ListenQueueName}"), "RabbitMQ/ModelShutdown");
                                 Task.Run(RabbitMqChannelShutdown);
                             }
                         };

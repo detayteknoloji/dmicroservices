@@ -17,13 +17,8 @@ namespace DMicroservices.RabbitMq.Test
         {
             Console.WriteLine(model.Message);
 
-            for (int i = 0; i < 10; i++)
-            {
-                Console.WriteLine(i);
-                Thread.Sleep(300);
-            }
-
             //Send Ack.
+            BasicAck(e.DeliveryTag, false);
             BasicAck(e.DeliveryTag, false);
 
         }

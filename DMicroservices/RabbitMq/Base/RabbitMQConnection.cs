@@ -70,7 +70,10 @@ namespace DMicroservices.RabbitMq.Base
                     Connection = connectionFactory.CreateConnection();
                     Connection.ConnectionShutdown += (sender, args) =>
                     {
-
+                        if (args.ReplyCode != 200)
+                        {
+                            ElasticLogger.Instance.Error(new Exception($"{args}"), "RabbitMQ/ConnectionShutdown");
+                        }
                     };
                     return Connection;
                 }

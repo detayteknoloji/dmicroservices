@@ -36,7 +36,16 @@ namespace DMicroservices.DataAccess.Tests
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseMySql(MYSQL_URI, ServerVersion.AutoDetect(MYSQL_URI));
+                ServerVersion serverVersion;
+                try
+                {
+                    serverVersion = ServerVersion.AutoDetect(MYSQL_URI);
+                }
+                catch
+                {
+                    serverVersion = ServerVersion.FromString("8.0.23");
+                }
+                optionsBuilder.UseMySql(MYSQL_URI, serverVersion);
             }
             base.OnConfiguring(optionsBuilder);
         }

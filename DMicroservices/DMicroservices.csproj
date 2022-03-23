@@ -6,12 +6,12 @@
 		<RepositoryUrl>https://github.com/detayteknoloji/dmicroservices</RepositoryUrl>
 		<Authors>Serhat Boyraz</Authors>
 		<Company>Detaysoft</Company>
-		<Version>3.0.40</Version>
+		<Version>3.0.42</Version>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<OutputType>Library</OutputType>
 		<IsPackable>true</IsPackable>
-		<AssemblyVersion>3.0.40.0</AssemblyVersion>
-		<FileVersion>3.0.40.0</FileVersion>
+		<AssemblyVersion>3.0.42.0</AssemblyVersion>
+		<FileVersion>3.0.42.0</FileVersion>
 	</PropertyGroup>
 
 	<ItemGroup>

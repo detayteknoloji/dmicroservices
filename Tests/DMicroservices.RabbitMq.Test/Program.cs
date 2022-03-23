@@ -18,12 +18,11 @@ namespace DMicroservices.RabbitMq.Test
         {
             Debug.WriteLine("all register");
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
-            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
-            
-            Debug.WriteLine("clear all");
-            ConsumerRegistry.Instance.ClearAllRegisters(typeof(ExampleConsumer2));
-            
 
+            RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
+            {
+                Message = "hello world."
+            });
             //Debug.WriteLine("all register");
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
