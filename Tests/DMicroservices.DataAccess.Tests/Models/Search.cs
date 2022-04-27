@@ -24,6 +24,8 @@ namespace DMicroservices.DataAccess.Tests.Models
 
         public DateTime DateTimeValue { get; set; }
 
+        public DateTime? DateTimeNullable { get; set; }
+
         public bool BoolValue { get; set; }
 
         public double DoubleValue { get; set; }

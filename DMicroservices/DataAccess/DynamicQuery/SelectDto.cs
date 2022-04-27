@@ -454,6 +454,12 @@ namespace DMicroservices.DataAccess.DynamicQuery
                     ? Expression.Or(complateBinaryExp, filterExpression)
                     : filterExpression;
             }
+            else if (compareType == "ANDALSO")
+            {
+                return complateBinaryExp != null
+                    ? Expression.AndAlso(complateBinaryExp, filterExpression)
+                    : filterExpression;
+            }
 
             return complateBinaryExp != null
                 ? Expression.And(complateBinaryExp, filterExpression)
