@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using DMicroservices.DataAccess.UnitOfWork;
 
 namespace DMicroservices.DataAccess.DynamicQuery
 {
@@ -15,7 +16,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
     /// </summary>
     public class SelectDto<T, D> : IDisposable
         where T : class
-        where D : DbContext
+        where D : DbContext, ICustomDbContext
     {
         private ConstantExpression ZeroConstant = Expression.Constant(0);
         private ConstantExpression OneConstant = Expression.Constant(1);
@@ -153,9 +154,14 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
-            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression());
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
@@ -183,9 +189,14 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
         /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
         /// <returns></returns>
-        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork<D> uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
         {
-            IQueryable<T> queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+
             if (additionalExpression != null)
                 queryObject = queryObject.Where(additionalExpression);
             if (Sort != null)
@@ -205,6 +216,109 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 queryObject = queryObject.Skip(SkipCount);
 
             return queryObject;
+        }
+
+        /// <summary>
+        /// Sorgu nesnesini filtrelenmiş ve sıralanmış olarak oluşturur.
+        /// </summary>
+        /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
+        /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
+        /// <returns></returns>
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
+        {
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression());
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+
+            if (additionalExpression != null)
+                queryObject = queryObject.Where(additionalExpression);
+            if (Sort != null)
+            {
+                IOrderedQueryable<T> orderedQueryable = (IOrderedQueryable<T>)queryObject;
+                for (int i = 0; i < Sort.Count; i++)
+                {
+                    orderedQueryable = i == 0 ? GetOrderQueryable(queryObject, Sort[i]) : GetOrderQueryable(orderedQueryable, Sort[i]);
+                }
+                queryObject = orderedQueryable;
+            }
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(SkipCount + TakeCount);
+
+            if (SkipCount > 0)
+                queryObject = queryObject.Skip(SkipCount);
+
+            return queryObject;
+        }
+
+        /// <summary>
+        /// Sorgu nesnesini ilişkileriyle, filtrelenmiş ve sıralanmış olarak oluşturur.
+        /// </summary>
+        /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
+        /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
+        /// <returns></returns>
+        public IQueryable<T> GetQueryObject(UnitOfWork.UnitOfWork uow, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
+        {
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression()).Include(includePaths);
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression()).Include(includePaths);
+
+            if (additionalExpression != null)
+                queryObject = queryObject.Where(additionalExpression);
+            if (Sort != null)
+            {
+                IOrderedQueryable<T> orderedQueryable = (IOrderedQueryable<T>)queryObject;
+                for (int i = 0; i < Sort.Count; i++)
+                {
+                    orderedQueryable = i == 0 ? GetOrderQueryable(queryObject, Sort[i]) : GetOrderQueryable(orderedQueryable, Sort[i]);
+                }
+                queryObject = orderedQueryable;
+            }
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(SkipCount + TakeCount);
+
+            if (SkipCount > 0)
+                queryObject = queryObject.Skip(SkipCount);
+
+            return queryObject;
+        }
+
+        /// <summary>
+        /// Sorgu nesnesini totalCount ile filtrelenmiş ve sıralanmış olarak oluşturur.
+        /// </summary>
+        /// <param name="uow">Açılmış olan veritabanı bağlantısı</param>
+        /// <param name="additionalExpression">Ek filtre sorgusu yazılması gerekiyorsa yazılmalıdır.</param>
+        /// <returns></returns>
+        public Tuple<IQueryable<T>, int> GetQueryObjectWithTotalCount(UnitOfWork.UnitOfWork<D> uow, Expression<Func<T, bool>> additionalExpression = null, bool readonlyRepo = false)
+        {
+            IQueryable<T> queryObject;
+            if (readonlyRepo)
+                queryObject = uow.GetReadonlyRepository<T>().GetAll(GetExpression());
+            else
+                queryObject = uow.GetRepository<T>().GetAll(GetExpression());
+
+            if (additionalExpression != null)
+                queryObject = queryObject.Where(additionalExpression);
+            if (Sort != null)
+            {
+                IOrderedQueryable<T> orderedQueryable = (IOrderedQueryable<T>)queryObject;
+                for (int i = 0; i < Sort.Count; i++)
+                {
+                    orderedQueryable = i == 0 ? GetOrderQueryable(queryObject, Sort[i]) : GetOrderQueryable(orderedQueryable, Sort[i]);
+                }
+                queryObject = orderedQueryable;
+            }
+            int totalCount = queryObject.Count();
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(SkipCount + TakeCount);
+            if (SkipCount > 0)
+                queryObject = queryObject.Skip(SkipCount);
+            return Tuple.Create(queryObject, totalCount);
         }
 
         /// <summary>
@@ -338,6 +452,12 @@ namespace DMicroservices.DataAccess.DynamicQuery
             {
                 return complateBinaryExp != null
                     ? Expression.Or(complateBinaryExp, filterExpression)
+                    : filterExpression;
+            }
+            else if (compareType == "ANDALSO")
+            {
+                return complateBinaryExp != null
+                    ? Expression.AndAlso(complateBinaryExp, filterExpression)
                     : filterExpression;
             }
 

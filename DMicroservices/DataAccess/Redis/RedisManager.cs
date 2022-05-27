@@ -8,7 +8,7 @@ namespace DMicroservices.DataAccess.Redis
 {
     public class RedisManager
     {
-        private static readonly string Domain = Environment.GetEnvironmentVariable("REDIS_URL");
+        private static readonly string _redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 
         private ConnectionMultiplexer Connection { get; set; }
 
@@ -19,7 +19,7 @@ namespace DMicroservices.DataAccess.Redis
 
         private RedisManager()
         {
-            ConfigurationOptions options = ConfigurationOptions.Parse(Domain);
+            ConfigurationOptions options = ConfigurationOptions.Parse(_redisUrl);
             Connection = ConnectionMultiplexer.Connect(options);
             RedisDatabase = Connection.GetDatabase();
             MessagePackSerializer.DefaultOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
@@ -240,7 +240,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeys()
         {
-            return Connection.GetServer(Domain).Keys(pattern: "*").ToList();
+            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
         }
 
 
@@ -250,7 +250,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeysByLike(string key)
         {
-            List<RedisKey> keys = Connection.GetServer(Domain).Keys(pattern: "*").ToList();
+            List<RedisKey> keys = Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
             return keys.Where(p => p.ToString().Contains(key)).ToList();
         }
 

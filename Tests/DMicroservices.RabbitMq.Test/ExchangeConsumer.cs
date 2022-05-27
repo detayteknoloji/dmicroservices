@@ -1,13 +1,16 @@
-﻿using System;
-using System.Threading;
-using DMicroservices.RabbitMq.Consumer;
+﻿using DMicroservices.RabbitMq.Consumer;
+using DMicroservices.RabbitMq.Model;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client;
+using System;
 
 namespace DMicroservices.RabbitMq.Test
 {
-    class ExampleConsumer : BasicConsumer<ExampleModel>
+    class ExchangeConsumer : BasicConsumer<ExampleModel>
     {
         public override string ListenQueueName => "ExampleQueue";
+
+        public override ExchangeContent ExchangeContent => new ExchangeContent() { ExchangeName = "ExampleExchange", ExchangeType = ExchangeType.Fanout };
 
         public override bool AutoAck => false;
 
@@ -16,12 +19,7 @@ namespace DMicroservices.RabbitMq.Test
         private void DataReceived(ExampleModel model, BasicDeliverEventArgs e)
         {
             Console.WriteLine(model.Message);
-
-            //Send Ack.
             BasicAck(e.DeliveryTag, false);
-            BasicAck(e.DeliveryTag, false);
-
         }
-
     }
 }

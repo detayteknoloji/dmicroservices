@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 using DMicroservices.DataAccess.Tests.Models;
+using DMicroservices.DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 
 namespace DMicroservices.DataAccess.Tests
 {
-    public class MasterContext : DbContext
+    public class MasterContext : DbContext, ICustomDbContext
     {
         public MasterContext()
         {
@@ -15,7 +16,6 @@ namespace DMicroservices.DataAccess.Tests
         }
         public MasterContext(DbContextOptions<MasterContext> options)
         {
-
         }
 
         public DbSet<City> City { get; set; }
@@ -36,10 +36,20 @@ namespace DMicroservices.DataAccess.Tests
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseMySql(Environment.GetEnvironmentVariable("MYSQL_URI"),
-                    ServerVersion.AutoDetect(Environment.GetEnvironmentVariable("MYSQL_URI")));
+                ServerVersion serverVersion;
+                try
+                {
+                    serverVersion = ServerVersion.AutoDetect(MYSQL_URI);
+                }
+                catch
+                {
+                    serverVersion = ServerVersion.FromString("8.0.23");
+                }
+                optionsBuilder.UseMySql(MYSQL_URI, serverVersion);
             }
             base.OnConfiguring(optionsBuilder);
         }
+
+        public string MYSQL_URI { get; set; } = Environment.GetEnvironmentVariable("MYSQL_URI");
     }
 }

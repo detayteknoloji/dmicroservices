@@ -6,7 +6,11 @@ using DMicroservices.Utils.Logger;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using DMicroservices.DataAccess.Repository;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.EntityFrameworkCore;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -14,22 +18,28 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
-            SelectDto_Test();
+            //RedisManager.Instance.Exists("hi");
+            //SelectDto_Test();
+            //using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
+            //{
+            //    DynamicQuery.SelectDto<City, MasterContext> asd = new DynamicQuery.SelectDto<City, MasterContext>();
+            //    var cities = asd.GetQueryObject(repo,readonlyRepo:true).ToList();
+            //}
 
-            var testRedisList = new RedisList<Search>("Test");
-            List<Search> searches = new List<Search>();
+            //var testRedisList = new RedisList<Search>("Test");
+            //List<Search> searches = new List<Search>();
 
-            for (int i = 0; i < 10; i++)
-            {
-                searches.Add(new Search()
-                {
-                    IntValue = i
-                });
-            }
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    searches.Add(new Search()
+            //    {
+            //        IntValue = i
+            //    });
+            //}
 
-            testRedisList.AddRange(searches);
+            //testRedisList.AddRange(searches);
 
-            var getSearches = testRedisList.Where(x => x.IntValue == 3).ToList();
+            //var getSearches = testRedisList.Where(x => x.IntValue == 3).ToList();
 
             //using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
             //{
@@ -44,17 +54,15 @@ namespace DMicroservices.DataAccess.Tests
 
             //try
             //{
-            //    using (var uow = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>(new UnitOfWorkSettings()
-            //    {
-            //        ChangeDataCapture = true,
-            //        ChangedUserPropertyName = "ChangedBy",
-            //        IdPropertyName = "Id"
-            //    }))
+            //    using (var uow = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
             //    {
             //        var ct = uow.GetRepository<City>().Get(x => x != null);
 
-            //        uow.GetRepository<City>().Delete(ct);
-            //        uow.SaveChanges();
+            //        //uow.GetRepository<City>().Delete(ct);
+            //        //uow.SaveChanges();
+
+            //        var cta = uow.GetReadonlyRepository<City>().Get(x => x != null);
+
             //    }
 
             //}
@@ -66,65 +74,94 @@ namespace DMicroservices.DataAccess.Tests
 
             //return;
 
-            //using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
+            using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
+            {
+                //var city = new City() { Name = "sivas" };
+                //var t1 = new Teacher() { Branch = 1, Name = "serhat", City = city };
+                //var t2 = new Teacher() { Branch = 2, Name = "süha", City = city };
+
+                //var s1 = new Student() { StudentNum = 5858, Name = "emre", City = city };
+                //var s2 = new Student() { StudentNum = 5860, Name = "duhan", City = city };
+                Random r = new Random();
+                var cty = uow.GetReadonlyRepository<City>().Get(y => true);
+                var s3 = new Student()
+                    {StudentNum = r.Next(1,99999), Name = "test", ForeignCityId = cty.Id};
+
+
+                //uow.GetRepository<City>().Add(city);
+
+                //uow.GetRepository<Teacher>().Add(t1);
+                //uow.GetRepository<Teacher>().Add(t2);
+
+                var primaryRepo = uow.GetRepository<Student>();
+                getinfo(primaryRepo);
+
+                //uow.GetRepository<Student>().Add(s2);
+
+                //uow.SaveChanges();
+                var repo = uow.GetReadonlyRepository<City>();
+                getinfo(repo);
+
+
+
+                var persons = uow.GetReadonlyRepository<City>().Get(x => x.Id.Equals(1), new List<string>() { "Persons" })
+                    .Persons;
+
+                foreach (var person in persons)
+                {
+
+                    if (person is Student)
+                    {
+
+                    }
+                    else if (person is Teacher)
+                    {
+                        var teacher = (Teacher)person;
+                    }
+                }
+
+            }
+
+            //ElasticLogger.Instance.Info("Info Log", new Dictionary<string, Object>() {
+            //        { "No", 1 },
+            //        { "Name", "DMicroServices Info" }
+            //    });
+
+            //try
             //{
-            //    var city = new City() { Name = "sivas" };
-            //    var t1 = new Teacher() { Branch = 1, Name = "serhat", City = city };
-            //    var t2 = new Teacher() { Branch = 2, Name = "süha", City = city };
-
-            //    var s1 = new Student() { StudentNum = 5858, Name = "emre", City = city };
-            //    var s2 = new Student() { StudentNum = 5860, Name = "duhan", City = city };
-
-
-            //    uow.GetRepository<City>().Add(city);
-
-            //    uow.GetRepository<Teacher>().Add(t1);
-            //    uow.GetRepository<Teacher>().Add(t2);
-
-            //    uow.GetRepository<Student>().Add(s1);
-            //    uow.GetRepository<Student>().Add(s2);
-
-            //    uow.SaveChanges();
-
-            //    var persons = uow.GetRepository<City>().Get(x => x.Id.Equals(1), new List<string>() { "Persons" })
-            //        .Persons;
-
-            //    foreach (var person in persons)
-            //    {
-
-            //        if (person is Student)
-            //        {
-
-            //        }
-            //        else if (person is Teacher)
-            //        {
-            //            var teacher = (Teacher)person;
-            //        }
-            //    }
-
+            //    int a = 0;
+            //    int b = 10 / a;
             //}
-
-            ElasticLogger.Instance.Info("Info Log", new Dictionary<string, Object>() {
-                    { "No", 1 },
-                    { "Name", "DMicroServices Info" }
-                });
-
-            try
-            {
-                int a = 0;
-                int b = 10 / a;
-            }
-            catch (Exception ex)
-            {
-                ElasticLogger.Instance.Error(ex, "Exception Log", new Dictionary<string, Object>() {
-                    { "No", 1 },
-                    { "Name", "DMicroServices Error" }
-                });
-            }
+            //catch (Exception ex)
+            //{
+            //    ElasticLogger.Instance.Error(ex, "Exception Log", new Dictionary<string, Object>() {
+            //        { "No", 1 },
+            //        { "Name", "DMicroServices Error" }
+            //    });
+            //}
             Console.WriteLine("Hello World!");
             Console.ReadLine();
         }
 
+        private static void getinfo<T>(IRepository<T> repo) where T : class
+        {
+            using (var command =repo.GetDbContext().Database.GetDbConnection().CreateCommand())
+            {
+                command.CommandText = "SELECT * FROM xyz.info;";
+                command.CommandType = CommandType.Text;
+
+                repo.GetDbContext().Database.OpenConnection();
+
+                using (var result = command.ExecuteReader())
+                {
+                    while (result.Read())
+                    {
+                        Console.WriteLine($"data from : {result[0]}");
+                    }
+                }
+            }
+
+        }
         static void SelectDto_Test()
         {
             string selectDtoStringValue = "{\"Filter\":[{\"PropertyName\":\"StringValue\",\"Operation\":\"IN\",\"PropertyValue\":\"Str1,Str2\"}],\"FilterCompareType\":\"AND\",\"FilterCompareTypes\":[{\"Group\":\"gp\",\"Type\":\"OR\"}],\"TakeCount\":1,\"SkipCount\":1}";

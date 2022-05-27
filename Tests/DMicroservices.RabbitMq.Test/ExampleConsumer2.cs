@@ -5,9 +5,9 @@ using RabbitMQ.Client.Events;
 
 namespace DMicroservices.RabbitMq.Test
 {
-    class ExampleConsumer : BasicConsumer<ExampleModel>
+    class ExampleConsumer2 : BasicConsumer<ExampleModel>
     {
-        public override string ListenQueueName => "ExampleQueue";
+        public override string ListenQueueName => "ExampleQueue2";
 
         public override bool AutoAck => false;
 
@@ -17,8 +17,13 @@ namespace DMicroservices.RabbitMq.Test
         {
             Console.WriteLine(model.Message);
 
+            for (int i = 0; i < 10; i++)
+            {
+                Console.WriteLine(i);
+                Thread.Sleep(300);
+            }
+
             //Send Ack.
-            BasicAck(e.DeliveryTag, false);
             BasicAck(e.DeliveryTag, false);
 
         }

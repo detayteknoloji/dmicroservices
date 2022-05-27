@@ -1,6 +1,9 @@
-﻿namespace DMicroservices.RabbitMq.Consumer
+﻿using System;
+using System.Threading.Tasks;
+
+namespace DMicroservices.RabbitMq.Consumer
 {
-    public interface IConsumer
+    public interface IConsumer 
     {
         string ListenQueueName { get;}
 
@@ -8,6 +11,8 @@
 
         ushort PrefectCount { get; set; }
 
+        Task StartConsume();
 
+        Task StopConsume();
     }
 }
