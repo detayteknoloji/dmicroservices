@@ -1,8 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using DMicroservices.Utils.Logger;
 using MessagePack;
 using StackExchange.Redis;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace DMicroservices.DataAccess.Redis
 {
@@ -10,19 +11,52 @@ namespace DMicroservices.DataAccess.Redis
     {
         private static readonly string _redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 
-        private ConnectionMultiplexer Connection { get; set; }
+        private static IConnectionMultiplexer ConnectionObject;
 
-        private IDatabase RedisDatabase { get; set; }
+        /// <summary>
+        ///Lock
+        /// </summary>
+        private static readonly object _lockObj = new object();
+
+        private ConnectionMultiplexer Connection
+        {
+            get
+            {
+                if (ConnectionObject == null || !ConnectionObject.IsConnected)
+                {
+                    lock (_lockObj)
+                    {
+                        if (ConnectionObject == null || !ConnectionObject.IsConnected)
+                        {
+                            ConnectionObject = ConnectionMultiplexer.Connect(Options);
+                        }
+                    }
+                }
+                return (ConnectionMultiplexer)ConnectionObject;
+            }
+        }
+
+        private ConfigurationOptions Options { get; set; }
+
 
         #region Singleton Section
         private static readonly Lazy<RedisManager> _instance = new Lazy<RedisManager>(() => new RedisManager());
 
         private RedisManager()
         {
-            ConfigurationOptions options = ConfigurationOptions.Parse(_redisUrl);
-            Connection = ConnectionMultiplexer.Connect(options);
-            RedisDatabase = Connection.GetDatabase();
+            Options = ConfigurationOptions.Parse(_redisUrl);
+            Options.KeepAlive = 4;
+            Options.SyncTimeout = 15000;
+            Options.AbortOnConnectFail = false;
+            ConnectionObject = ConnectionMultiplexer.Connect(Options);
+            //Connection.GetDatabase() = Connection.GetDatabase();
+            AddRegisterEvent();
             MessagePackSerializer.DefaultOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
+        }
+
+        private void GetConnection()
+        {
+
         }
 
         public static RedisManager Instance => _instance.Value;
@@ -35,7 +69,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public string Get(string key)
         {
-            return RedisDatabase.StringGet(key);
+            return Connection.GetDatabase().StringGet(key);
         }
 
         /// <summary>
@@ -44,7 +78,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public bool DeleteByKey(string key)
         {
-            return RedisDatabase.KeyDelete(key);
+            return Connection.GetDatabase().KeyDelete(key);
         }
 
         /// <summary>
@@ -97,7 +131,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="expireTime"></param>
         public bool SetAsync(string key, string value, TimeSpan expireTime)
         {
-            var task = RedisDatabase.StringSetAsync(key, value, expireTime);
+            var task = Connection.GetDatabase().StringSetAsync(key, value, expireTime);
             return task.Result;
         }
 
@@ -110,8 +144,8 @@ namespace DMicroservices.DataAccess.Redis
         public bool Set(string key, string value, TimeSpan? expireTime = null)
         {
             if (expireTime > TimeSpan.MinValue)
-                return RedisDatabase.StringSet(key, value, expireTime);
-            return RedisDatabase.StringSet(key, value);
+                return Connection.GetDatabase().StringSet(key, value, expireTime);
+            return Connection.GetDatabase().StringSet(key, value);
         }
 
         /// <summary>
@@ -122,7 +156,7 @@ namespace DMicroservices.DataAccess.Redis
         public bool SetSerializeBytes<T>(string key, T value, TimeSpan? expiry = null)
         {
             byte[] obj = Serialize<T>(value);
-            return RedisDatabase.StringSet(key, obj, expiry);
+            return Connection.GetDatabase().StringSet(key, obj, expiry);
         }
 
         /// <summary>
@@ -133,7 +167,7 @@ namespace DMicroservices.DataAccess.Redis
         {
             if (Exists(key))
             {
-                RedisValue redisValue = RedisDatabase.StringGet(key);
+                RedisValue redisValue = Connection.GetDatabase().StringGet(key);
                 if (redisValue != RedisValue.Null && redisValue.HasValue)
                     return Deserialize<T>(redisValue);
             }
@@ -161,7 +195,7 @@ namespace DMicroservices.DataAccess.Redis
 
             if (this.Exists(key))
             {
-                obj = this.RedisDatabase.StringGet(key);
+                obj = this.Connection.GetDatabase().StringGet(key);
             }
 
             return (obj != null);
@@ -265,7 +299,7 @@ namespace DMicroservices.DataAccess.Redis
             List<RedisKey> keys = GetAllKeys();
             foreach (var key in keys)
             {
-                keyExpireTime.Add(key, RedisDatabase.KeyTimeToLive(key));
+                keyExpireTime.Add(key, Connection.GetDatabase().KeyTimeToLive(key));
             }
 
             return keyExpireTime;
@@ -278,7 +312,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public TimeSpan? GetKeyTime(string key)
         {
-            return RedisDatabase.KeyTimeToLive(key);
+            return Connection.GetDatabase().KeyTimeToLive(key);
         }
 
         /// <summary>
@@ -301,6 +335,91 @@ namespace DMicroservices.DataAccess.Redis
         public T Deserialize<T>(byte[] obj)
         {
             return MessagePackSerializer.Deserialize<T>(obj);
+        }
+
+        /// <summary>
+        /// Log Event
+        /// </summary>
+        private void AddRegisterEvent()
+        {
+            Connection.ConnectionRestored += ConnMultiplexer_ConnectionRestored;
+            Connection.ConnectionFailed += ConnMultiplexer_ConnectionFailed;
+            Connection.ErrorMessage += ConnMultiplexer_ErrorMessage;
+            Connection.ConfigurationChanged += ConnMultiplexer_ConfigurationChanged;
+            Connection.HashSlotMoved += ConnMultiplexer_HashSlotMoved;
+            Connection.InternalError += ConnMultiplexer_InternalError;
+            Connection.ConfigurationChangedBroadcast += ConnMultiplexer_ConfigurationChangedBroadcast;
+        }
+
+        /// <summary>
+        /// Master-slave konfigürasyon değişikliğinde(Redis ağını bulmak için)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_ConfigurationChangedBroadcast(object sender, EndPointEventArgs e)
+        {
+            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConfigurationChangedBroadcast)}: {e.EndPoint}");
+        }
+
+        /// <summary>
+        /// InternalServer Error
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_InternalError(object sender, InternalErrorEventArgs e)
+        {
+            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_InternalError)}: {e.Exception}");
+        }
+
+        /// <summary>
+        /// Mantıksal cluster switch olduğunda
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_HashSlotMoved(object sender, HashSlotMovedEventArgs e)
+        {
+            ElasticLogger.Instance.Info(
+                 $"{nameof(ConnMultiplexer_HashSlotMoved)}: {nameof(e.OldEndPoint)}-{e.OldEndPoint} To {nameof(e.NewEndPoint)}-{e.NewEndPoint}");
+        }
+
+        /// <summary>
+        /// Runtime konfigurasyon değişikliğinde
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_ConfigurationChanged(object sender, EndPointEventArgs e)
+        {
+            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConfigurationChanged)}: {e.EndPoint}");
+        }
+
+        /// <summary>
+        /// Herhangi bir redis hatasında
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_ErrorMessage(object sender, RedisErrorEventArgs e)
+        {
+            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ErrorMessage)}: {e.Message}");
+        }
+
+        /// <summary>
+        /// Bağlantı fail olduysa
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_ConnectionFailed(object sender, ConnectionFailedEventArgs e)
+        {
+            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConnectionFailed)}: {e.Exception}");
+        }
+
+        /// <summary>
+        // Bağlantı restore edildiyse
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConnMultiplexer_ConnectionRestored(object sender, ConnectionFailedEventArgs e)
+        {
+            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConnectionRestored)}: {e.Exception}");
         }
     }
 }
