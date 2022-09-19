@@ -10,7 +10,8 @@ namespace DMicroservices.Utils.Logger
 {
     public class ElasticLogger
     {
-        private static Serilog.Core.Logger _log;
+        private static Serilog.Core.Logger _errorLogger;
+        private static Serilog.Core.Logger _infoLogger;
         public bool IsConfigured { get; set; } = false;
 
         #region Singleton Section
@@ -49,7 +50,7 @@ namespace DMicroservices.Utils.Logger
                 messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
 
             if (IsConfigured)
-                _log.Error(ex, messageTemplate);
+                _errorLogger.Error(ex, messageTemplate);
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
@@ -66,13 +67,12 @@ namespace DMicroservices.Utils.Logger
             messageTemplate += " by Company Id :{@CompanyNo}";
 
             if (IsConfigured)
-                _log.Error(ex, messageTemplate, companyNo);
+                _errorLogger.Error(ex, messageTemplate, companyNo);
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
-
 
         public void Error(Exception ex, string messageTemplate, object trackObject)
         {
@@ -84,7 +84,7 @@ namespace DMicroservices.Utils.Logger
             messageTemplate += " with Track object : {@trackObject}";
 
             if (IsConfigured)
-                _log.Error(ex, messageTemplate, Convert.ToString(trackObject));
+                _errorLogger.Error(ex, messageTemplate, Convert.ToString(trackObject));
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
@@ -109,14 +109,13 @@ namespace DMicroservices.Utils.Logger
                     stringBuilder.AppendLine("}");
                 }
 
-                _log.Error(ex, stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+                _errorLogger.Error(ex, stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
             }
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
-
 
         public void Info(string messageTemplate)
         {
@@ -126,7 +125,7 @@ namespace DMicroservices.Utils.Logger
                 messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
 
             if (IsConfigured)
-                _log.Information(messageTemplate);
+                _infoLogger.Information(messageTemplate);
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
@@ -151,7 +150,7 @@ namespace DMicroservices.Utils.Logger
                     stringBuilder.AppendLine("}");
                 }
 
-                _log.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+                _infoLogger.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
             }
 
 #if DEBUG
@@ -162,6 +161,13 @@ namespace DMicroservices.Utils.Logger
         private void Configure(string elasticUri, string format)
         {// ex.  "serilog-{0:yyyy.MM.dd}"
 
+            ConfigureElasticLogger(elasticUri, $"error-{format}", ref _errorLogger);
+            ConfigureElasticLogger(elasticUri, $"info-{format}", ref _infoLogger);
+            IsConfigured = true;
+        }
+
+        private void ConfigureElasticLogger(string elasticUri, string indexFormat, ref Serilog.Core.Logger logger)
+        {
             var loggerConfiguration = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
                 .WriteTo.Elasticsearch(
@@ -170,7 +176,7 @@ namespace DMicroservices.Utils.Logger
                         AutoRegisterTemplate = true,
                         AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv6,
                         TemplateName = "serilog-events-template",
-                        IndexFormat = format
+                        IndexFormat = indexFormat
                     });
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
@@ -179,9 +185,7 @@ namespace DMicroservices.Utils.Logger
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HOSTNAME")))
                 loggerConfiguration.Enrich.WithProperty("PodId", Environment.GetEnvironmentVariable("HOSTNAME"));
 
-            _log = loggerConfiguration.CreateLogger();
-
-            IsConfigured = true;
+            logger = loggerConfiguration.CreateLogger();
         }
     }
 }
