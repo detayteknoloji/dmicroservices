@@ -27,6 +27,7 @@ namespace DMicroservices.RabbitMq.Producer
 
         #region Member
 
+        private byte DeliveryMode = 2;
         #endregion
 
         #region Property
@@ -52,7 +53,9 @@ namespace DMicroservices.RabbitMq.Producer
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
                 {
                     string jsonData = JsonConvert.SerializeObject(message);
-                    channel.BasicPublish(string.Empty, queueName, null, Encoding.UTF8.GetBytes(jsonData));
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.DeliveryMode = DeliveryMode;
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
                     return channel.MessageCount(queueName);
                 }
             }
@@ -84,6 +87,7 @@ namespace DMicroservices.RabbitMq.Producer
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.Headers = headers;
+                    properties.DeliveryMode = DeliveryMode;
                     channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
                 }
             }
@@ -115,6 +119,7 @@ namespace DMicroservices.RabbitMq.Producer
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.Headers = headers;
                     properties.Priority = priority;
+                    properties.DeliveryMode = DeliveryMode;
                     channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
                 }
             }
@@ -145,6 +150,7 @@ namespace DMicroservices.RabbitMq.Producer
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.Priority = priority;
+                    properties.DeliveryMode = DeliveryMode;
                     channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
                 }
             }
@@ -172,7 +178,9 @@ namespace DMicroservices.RabbitMq.Producer
                 using (IModel channel = RabbitMqConnection.Instance.Connection.CreateModel())
                 {
                     string jsonData = JsonConvert.SerializeObject(message);
-                    channel.BasicPublish(exchangeName, key, null, Encoding.UTF8.GetBytes(jsonData));
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.DeliveryMode = DeliveryMode;
+                    channel.BasicPublish(exchangeName, key, properties, Encoding.UTF8.GetBytes(jsonData));
                 }
             }
             catch (Exception ex)
@@ -202,6 +210,7 @@ namespace DMicroservices.RabbitMq.Producer
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.Headers = headers;
+                    properties.DeliveryMode = DeliveryMode;
                     channel.BasicPublish(exchangeName, key, properties, Encoding.UTF8.GetBytes(jsonData));
                 }
             }
@@ -210,7 +219,7 @@ namespace DMicroservices.RabbitMq.Producer
                 ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
             }
         }
-                    
+
         /// <summary>
         /// Aldığı mesajı aldığı kuyruğa yazar
         /// </summary>

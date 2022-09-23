@@ -10,8 +10,8 @@
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<OutputType>Library</OutputType>
 		<IsPackable>true</IsPackable>
-		<AssemblyVersion>3.0.45.0</AssemblyVersion>
-		<FileVersion>3.0.45.0</FileVersion>
+		<AssemblyVersion>3.0.46.0</AssemblyVersion>
+		<FileVersion>3.0.46.0</FileVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
