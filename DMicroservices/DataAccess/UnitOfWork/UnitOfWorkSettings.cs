@@ -13,5 +13,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
         public string ChangedUserPropertyName { get; set; }
 
         public string IdPropertyName { get; set; }
+
+        public string ConnectionUri { get; set; }
     }
 }
