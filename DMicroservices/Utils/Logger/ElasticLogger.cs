@@ -3,6 +3,7 @@ using Serilog.Sinks.Elasticsearch;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -12,6 +13,9 @@ namespace DMicroservices.Utils.Logger
     {
         private static Serilog.Core.Logger _errorLogger;
         private static Serilog.Core.Logger _infoLogger;
+        private static bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG").ToLower() == "true";
+        private static string FileLogLocation = Environment.GetEnvironmentVariable("FILE_LOG_LOCATION");
+
         public bool IsConfigured { get; set; } = false;
 
         #region Singleton Section
@@ -19,24 +23,37 @@ namespace DMicroservices.Utils.Logger
 
         private ElasticLogger()
         {
-            string elasticUri = Environment.GetEnvironmentVariable("ELASTIC_URI");
-            string format = Environment.GetEnvironmentVariable("LOG_INDEX_FORMAT");
-
-            bool environmentNotCorrect = false;
-            if (string.IsNullOrEmpty(elasticUri))
+            if (IsFileLog)
             {
-                Console.WriteLine("env:ELASTIC_URI is empty.");
-                environmentNotCorrect = true;
-            }
 
-            if (string.IsNullOrEmpty(format))
+                if (string.IsNullOrWhiteSpace(FileLogLocation) || !Directory.Exists(FileLogLocation))
+                {
+                    FileLogLocation = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                }
+                ConfigureFileLog();
+            }
+            else
             {
-                Console.WriteLine("env:LOG_INDEX_FORMAT is empty.");
-                environmentNotCorrect = true;
-            }
+                bool environmentNotCorrect = false;
 
-            if (!environmentNotCorrect)
-                Configure(elasticUri, format);
+                string elasticUri = Environment.GetEnvironmentVariable("ELASTIC_URI");
+                string format = Environment.GetEnvironmentVariable("LOG_INDEX_FORMAT");
+
+                if (string.IsNullOrEmpty(elasticUri))
+                {
+                    Console.WriteLine("env:ELASTIC_URI is empty.");
+                    environmentNotCorrect = true;
+                }
+
+                if (string.IsNullOrEmpty(format))
+                {
+                    Console.WriteLine("env:LOG_INDEX_FORMAT is empty.");
+                    environmentNotCorrect = true;
+                }
+
+                if (!environmentNotCorrect)
+                    Configure(elasticUri, format);
+            }
         }
 
         public static ElasticLogger Instance => _instance.Value;
@@ -159,11 +176,37 @@ namespace DMicroservices.Utils.Logger
         }
 
         private void Configure(string elasticUri, string format)
-        {// ex.  "serilog-{0:yyyy.MM.dd}"
-
+        {
             ConfigureElasticLogger(elasticUri, $"error-{format}", ref _errorLogger);
             ConfigureElasticLogger(elasticUri, $"info-{format}", ref _infoLogger);
+
             IsConfigured = true;
+        }
+
+        private void ConfigureFileLog()
+        {
+            string outputTemplate = "-----------------------------------{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}-----------------------------------{NewLine}{Exception}-----------------------------------LOG END LINE-----------------------------------{NewLine}{NewLine}";
+            ConfigureFileLogger("error", outputTemplate, ref _errorLogger);
+            outputTemplate = "-----------------------------------{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}-----------------------------------{NewLine}{NewLine}";
+            ConfigureFileLogger("info", outputTemplate, ref _infoLogger);
+
+            IsConfigured = true;
+        }
+
+        private void ConfigureFileLogger(string indexName, string outputTemplate, ref Serilog.Core.Logger logger)
+        {
+            var loggerConfiguration = new LoggerConfiguration()
+              .MinimumLevel.Verbose()
+              .WriteTo.File($"{FileLogLocation}\\logs\\{indexName}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
+              outputTemplate: outputTemplate);
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
+                loggerConfiguration.Enrich.WithProperty("PodName", Environment.GetEnvironmentVariable("POD_NAME"));
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HOSTNAME")))
+                loggerConfiguration.Enrich.WithProperty("PodId", Environment.GetEnvironmentVariable("HOSTNAME"));
+
+            logger = loggerConfiguration.CreateLogger();
         }
 
         private void ConfigureElasticLogger(string elasticUri, string indexFormat, ref Serilog.Core.Logger logger)
