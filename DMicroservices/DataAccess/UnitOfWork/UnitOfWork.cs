@@ -57,6 +57,10 @@ namespace DMicroservices.DataAccess.UnitOfWork
                         if (propertyInfo != null)
                         {
                             string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
+                            if (!string.IsNullOrWhiteSpace(_unitOfWorkSettings?.ConnectionUri))
+                            {
+                                mysqlUri = _unitOfWorkSettings.ConnectionUri;
+                            }
                             propertyInfo.SetValue( dbContext, mysqlUri);
                         }
                     }
@@ -83,6 +87,11 @@ namespace DMicroservices.DataAccess.UnitOfWork
                         {
                             string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
                             var mysqlReadonlyUri = Environment.GetEnvironmentVariable("MYSQL_RO_URI");
+
+                            if (!string.IsNullOrWhiteSpace(_unitOfWorkSettings?.ConnectionUri))
+                            {
+                                mysqlUri = _unitOfWorkSettings.ConnectionUri;
+                            }
                             propertyInfo.SetValue(readonlyDbContext, string.IsNullOrEmpty(mysqlReadonlyUri) ? mysqlUri : mysqlReadonlyUri);
                         }
                     }
@@ -356,7 +365,11 @@ namespace DMicroservices.DataAccess.UnitOfWork
                         if (propertyInfo != null)
                         {
                             string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
-                            propertyInfo.SetValue(dbContext,mysqlUri);
+                            if (!string.IsNullOrWhiteSpace(_unitOfWorkSettings?.ConnectionUri))
+                            {
+                                mysqlUri = _unitOfWorkSettings.ConnectionUri;
+                            }
+                            propertyInfo.SetValue(dbContext, mysqlUri);
                         }
                     }
                 }
@@ -382,6 +395,11 @@ namespace DMicroservices.DataAccess.UnitOfWork
                         {
                             string mysqlUri = Environment.GetEnvironmentVariable("MYSQL_URI");
                             var mysqlReadonlyUri = Environment.GetEnvironmentVariable("MYSQL_RO_URI");
+
+                            if (!string.IsNullOrWhiteSpace(_unitOfWorkSettings?.ConnectionUri))
+                            {
+                                mysqlUri = _unitOfWorkSettings.ConnectionUri;
+                            }
                             propertyInfo.SetValue(readonlyDbContext, string.IsNullOrEmpty(mysqlReadonlyUri) ? mysqlUri : mysqlReadonlyUri);
                         }
                     }

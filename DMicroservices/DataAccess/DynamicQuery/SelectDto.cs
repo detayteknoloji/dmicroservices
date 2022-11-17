@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -98,7 +99,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
             if (Filter == null)
                 return x => true;
 
-            var availableProperties = typeof(TO).GetProperties();
+            var availableProperties = typeof(TO).GetProperties().Where(p => !p.GetCustomAttributes(true).Any(h => h.GetType().Name == nameof(NotMappedAttribute)));
 
             foreach (var filterItemDtos in Filter.GroupBy(x => x.Group))
             {
