@@ -64,6 +64,8 @@ namespace DMicroservices.DataAccess.UnitOfWork
                             propertyInfo.SetValue( dbContext, mysqlUri);
                         }
                     }
+
+
                 }
                 return dbContext;
             }
@@ -94,6 +96,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
                             }
                             propertyInfo.SetValue(readonlyDbContext, string.IsNullOrEmpty(mysqlReadonlyUri) ? mysqlUri : mysqlReadonlyUri);
                         }
+
                     }
                 }
                 return readonlyDbContext;
@@ -185,6 +188,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
 
                     result = DbContext.SaveChanges();
                     tScope.Complete();
+                    DbContext.ChangeTracker.Clear();
 
                     if (history != null && history.Count > 0)
                         using (var mongoRepo = MongoRepositoryFactory.CreateMongoRepository<HistoryCollectionModel>())
@@ -496,6 +500,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
 
                     result = DbContext.SaveChanges();
                     tScope.Complete();
+                    DbContext.ChangeTracker.Clear();
 
                     if (history != null && history.Count > 0)
                         using (var mongoRepo = MongoRepositoryFactory.CreateMongoRepository<HistoryCollectionModel>())

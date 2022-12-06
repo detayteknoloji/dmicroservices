@@ -14,7 +14,6 @@ namespace DMicroservices.DataAccess.Tests.Models
         public long Id { get; set; }
 
         [MaxLength(5)]
-        [NotMapped]
         public string Name { get; set; }
 
         public ICollection<Person> Persons { get; set; }   

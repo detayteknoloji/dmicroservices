@@ -84,9 +84,23 @@ namespace DMicroservices.DataAccess.Tests
                 //var s1 = new Student() { StudentNum = 5858, Name = "emre", City = city };
                 //var s2 = new Student() { StudentNum = 5860, Name = "duhan", City = city };
                 Random r = new Random();
-                var cty = uow.GetReadonlyRepository<City>().Get(y => true);
-                var s3 = new Student()
-                    {StudentNum = r.Next(1,99999), Name = "test", ForeignCityId = cty.Id};
+                var cty = uow.GetRepository<City>().Get(y => y.Id==1);
+
+
+                City cc = new City()
+                {
+                    Id = 1,
+                    Name = "test"
+                };
+                
+
+
+                uow.GetRepository<City>().Update(cc);
+
+                uow.SaveChanges();
+
+                //var s3 = new Student()
+                //    {StudentNum = r.Next(1,99999), Name = "test", ForeignCityId = cty.Id};
 
 
                 //uow.GetRepository<City>().Add(city);
