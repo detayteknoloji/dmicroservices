@@ -55,7 +55,82 @@ namespace DMicroservices.RabbitMq.Producer
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.DeliveryMode = DeliveryMode;
-                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
+                    channel.BasicPublish(string.Empty, queueName, properties,Encoding.UTF8.GetBytes(jsonData));
+                    return channel.MessageCount(queueName);
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        /// <param name="messages">mesaj</param>
+        public uint Publish(string queueName, List<T> messages)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Info("QueueName was null");
+                    return 0;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.DeliveryMode = DeliveryMode;
+
+                    var batchPublish = channel.CreateBasicPublishBatch();
+                    foreach (var message in messages)
+                    {
+                        string jsonData = JsonConvert.SerializeObject(message);
+                        batchPublish.Add(string.Empty, queueName, true, properties, Encoding.UTF8.GetBytes(jsonData));
+                    }
+                    batchPublish.Publish();
+                    
+                    return channel.MessageCount(queueName);
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        /// <param name="messages">mesaj</param>
+        public uint Publish(string queueName, List<string> messages)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Info("QueueName was null");
+                    return 0;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.DeliveryMode = DeliveryMode;
+
+                    var batchPublish = channel.CreateBasicPublishBatch();
+                    foreach (var message in messages)
+                    {
+                        batchPublish.Add(string.Empty, queueName, true, properties, Encoding.UTF8.GetBytes(message));
+                    }
+                    batchPublish.Publish();
+                    
                     return channel.MessageCount(queueName);
                 }
             }

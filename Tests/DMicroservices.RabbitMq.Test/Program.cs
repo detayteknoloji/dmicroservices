@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using DMicroservices.RabbitMq.Base;
@@ -17,12 +18,19 @@ namespace DMicroservices.RabbitMq.Test
         static void BasicPublishTest()
         {
             Debug.WriteLine("all register");
-            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
 
-            RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
+            for (int j = 0; j < 100; j++)
             {
-                Message = "hello world."
-            });
+
+                List<string> exm = new List<string>();
+                for (int i = 0; i < 100000; i++)
+                {
+                    exm.Add($"C:\\apache-maven-3.8.5\\lib\\jansi-native\\Windows\\x86_64C:\\apache-maven-3.8.5\\lib\\jansi-native\\Windows\\x86_64C:\\apache-maven-3.8.5\\lib\\jansi-native\\Windows\\x86_64C:\\apache-maven-3.8.5\\lib\\jansi-native\\Windows\\x86_64{i.ToString()}");
+                }
+
+                RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueu2e", exm);
+            }
             //Debug.WriteLine("all register");
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));

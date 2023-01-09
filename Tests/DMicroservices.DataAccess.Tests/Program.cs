@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading;
 using DMicroservices.DataAccess.Repository;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,27 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
-            SelectDto_Test();
+
+            using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
+            {
+                var yy = repo.GetRepository<City>().Get(x => x.Id==1);
+               
+                repo.GetRepository<City>().Update(yy);
+
+                var cty = new City()
+                {
+                    Id = 1,
+                    Name = "asd"
+                };
+
+                repo.GetRepository<City>().Add(cty);
+
+
+                repo.SaveChanges();
+            }
+
+            Console.ReadLine();
+            //SelectDto_Test();
             //RedisManager.Instance.Exists("hi");
             //SelectDto_Test();
             //using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
@@ -73,7 +94,7 @@ namespace DMicroservices.DataAccess.Tests
             //}
 
 
-            //return;
+            return;
 
             using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
             {
@@ -84,7 +105,7 @@ namespace DMicroservices.DataAccess.Tests
                 //var s1 = new Student() { StudentNum = 5858, Name = "emre", City = city };
                 //var s2 = new Student() { StudentNum = 5860, Name = "duhan", City = city };
                 Random r = new Random();
-                var cty = uow.GetRepository<City>().Get(y => y.Id==1);
+                var cty = uow.GetRepository<City>().Get(y => y.Id == 1);
 
 
                 City cc = new City()
@@ -92,7 +113,7 @@ namespace DMicroservices.DataAccess.Tests
                     Id = 1,
                     Name = "test"
                 };
-                
+
 
 
                 uow.GetRepository<City>().Update(cc);
@@ -160,7 +181,7 @@ namespace DMicroservices.DataAccess.Tests
 
         private static void getinfo<T>(IRepository<T> repo) where T : class
         {
-            using (var command =repo.GetDbContext().Database.GetDbConnection().CreateCommand())
+            using (var command = repo.GetDbContext().Database.GetDbConnection().CreateCommand())
             {
                 command.CommandText = "SELECT * FROM xyz.info;";
                 command.CommandType = CommandType.Text;
@@ -232,5 +253,5 @@ namespace DMicroservices.DataAccess.Tests
             //var queryResult = selectDtoString.GetQueryObject(uow).ToList();
         }
     }
-    }
+}
 
