@@ -110,7 +110,7 @@ namespace DMicroservices.RabbitMq.Producer
         /// </summary>
         /// <param name="queueName">kuyruk adı</param>
         /// <param name="messages">mesaj</param>
-        public uint Publish(string queueName, List<string> messages)
+        public uint Publish(string queueName, List<string> messages, Dictionary<string, object> headers)
         {
             try
             {
@@ -123,6 +123,7 @@ namespace DMicroservices.RabbitMq.Producer
                 {
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.DeliveryMode = DeliveryMode;
+                    properties.Headers = headers;
 
                     var batchPublish = channel.CreateBasicPublishBatch();
                     foreach (var message in messages)
