@@ -4,6 +4,7 @@ using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace DMicroservices.DataAccess.Redis
 {
@@ -420,6 +421,43 @@ namespace DMicroservices.DataAccess.Redis
         private void ConnMultiplexer_ConnectionRestored(object sender, ConnectionFailedEventArgs e)
         {
             ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConnectionRestored)}: {e.Exception}");
+        }
+
+
+        public void WaitForLock(string lockName, TimeSpan? delayTimeSpan = null, TimeSpan? lockTimeout = null, TimeSpan? keyExpireTimeSpan = null)
+        {
+            if (delayTimeSpan == null)
+                delayTimeSpan = TimeSpan.FromMilliseconds(100);
+
+            if (keyExpireTimeSpan == null)
+                keyExpireTimeSpan = TimeSpan.FromSeconds(30);
+
+            if (lockTimeout == null)
+                lockTimeout = TimeSpan.FromSeconds(5);
+
+            if (!Exists($"LOCK-{lockName}"))
+            {
+                Set($"LOCK-{lockName}", "", keyExpireTimeSpan);
+                return;
+            }
+
+            var startedDate = DateTime.Now;
+            while ((DateTime.Now - startedDate).TotalMilliseconds < lockTimeout.Value.TotalMilliseconds)
+            {
+                if (!Exists($"LOCK-{lockName}"))
+                {
+                    Set($"LOCK-{lockName}", "", keyExpireTimeSpan);
+                    return;
+                }
+                Thread.Sleep(delayTimeSpan.Value);
+            }
+
+
+            throw new TimeoutException($"Timeout exception, {lockName} cant be unlock.");
+        }
+        public void Unlock(string lockName)
+        {
+            DeleteByKey($"LOCK-{lockName}");
         }
     }
 }
