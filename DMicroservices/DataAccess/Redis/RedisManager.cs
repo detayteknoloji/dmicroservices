@@ -1,5 +1,7 @@
 ﻿using DMicroservices.Utils.Logger;
 using MessagePack;
+using RedLockNet.SERedis;
+using RedLockNet.SERedis.Configuration;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -18,6 +20,8 @@ namespace DMicroservices.DataAccess.Redis
         ///Lock
         /// </summary>
         private static readonly object _lockObj = new object();
+        private static readonly object _lockObjFactory = new object();
+        private RedLockFactory RedLockFactory { get; set; }
 
         private ConnectionMultiplexer Connection
         {
@@ -458,6 +462,23 @@ namespace DMicroservices.DataAccess.Redis
         public void Unlock(string lockName)
         {
             DeleteByKey($"LOCK-{lockName}");
+        }
+        
+
+        public RedLockFactory GetLockFactory
+        {
+            get
+            {
+                if (RedLockFactory != null)
+                    return RedLockFactory;
+
+                lock (_lockObjFactory)
+                {
+                    RedLockFactory = RedLockFactory.Create(new List<RedLockMultiplexer>() { Connection });
+                }
+
+                return RedLockFactory;
+            }
         }
     }
 }
