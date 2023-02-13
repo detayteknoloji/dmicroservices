@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using DMicroservices.RabbitMq.Base;
@@ -17,12 +18,8 @@ namespace DMicroservices.RabbitMq.Test
         static void BasicPublishTest()
         {
             Debug.WriteLine("all register");
-            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
-
-            RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
-            {
-                Message = "hello world."
-            });
+            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            
             //Debug.WriteLine("all register");
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));

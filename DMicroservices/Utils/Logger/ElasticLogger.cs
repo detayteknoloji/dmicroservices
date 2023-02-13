@@ -13,7 +13,7 @@ namespace DMicroservices.Utils.Logger
     {
         private static Serilog.Core.Logger _errorLogger;
         private static Serilog.Core.Logger _infoLogger;
-        private static bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG").ToLower() == "true";
+        private static bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG")?.ToLower() == "true";
         private static string FileLogLocation = Environment.GetEnvironmentVariable("FILE_LOG_LOCATION");
 
         public bool IsConfigured { get; set; } = false;

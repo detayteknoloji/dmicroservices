@@ -27,7 +27,7 @@ namespace DMicroservices.DataAccess.Tests
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
+            
             modelBuilder.Entity<Person>().HasOne(x => x.City).WithMany(x => x.Persons).HasForeignKey(x => x.ForeignCityId).HasPrincipalKey(x => x.Id);
         }
 
@@ -46,6 +46,7 @@ namespace DMicroservices.DataAccess.Tests
                     serverVersion = ServerVersion.FromString("8.0.23");
                 }
                 optionsBuilder.UseMySql(MYSQL_URI, serverVersion);
+                //optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
             }
             base.OnConfiguring(optionsBuilder);
         }
