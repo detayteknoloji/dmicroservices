@@ -25,6 +25,22 @@ namespace DMicroservices.RabbitMq.Base
         public static ConsumerRegistry Instance => _instance.Value;
         #endregion
 
+        public void RegisterWithList(List<Type> consumerList)
+        {
+            foreach (var consumer in consumerList.Where(x => !Consumers.Keys.Contains(x)))
+            {
+                Register(consumer);
+            }
+        }
+
+        public void UnRegisterWithList(List<Type> consumerList)
+        {
+            foreach (var consumer in consumerList.Where(x => !Consumers.Keys.Contains(x)))
+            {
+                UnRegister(consumer);
+            }
+        }
+
         public void Register(Type consumer)
         {
             if (consumer.GetInterfaces().Length == 0 || consumer.GetInterfaces().Any(x => x.GetInterface("IConsumer") != null))
