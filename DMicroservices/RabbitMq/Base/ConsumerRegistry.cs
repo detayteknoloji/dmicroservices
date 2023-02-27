@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using DMicroservices.RabbitMq.Consumer;
 using DMicroservices.RabbitMq.Producer;
 using DMicroservices.Utils.Logger;
+using MongoDB.Driver;
 
 namespace DMicroservices.RabbitMq.Base
 {
@@ -35,7 +36,7 @@ namespace DMicroservices.RabbitMq.Base
 
         public void UnRegisterWithList(List<Type> consumerList)
         {
-            foreach (var consumer in consumerList.Where(x => !Consumers.Keys.Contains(x)))
+            foreach (var consumer in Consumers.Keys.Where(x => !consumerList.Contains(x)))
             {
                 UnRegister(consumer);
             }
