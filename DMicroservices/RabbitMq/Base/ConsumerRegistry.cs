@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using DMicroservices.RabbitMq.Consumer;
-using DMicroservices.RabbitMq.Producer;
 using DMicroservices.Utils.Logger;
-using MongoDB.Driver;
 
 namespace DMicroservices.RabbitMq.Base
 {
