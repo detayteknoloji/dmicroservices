@@ -30,9 +30,9 @@ namespace DMicroservices.RabbitMq.Base
             }
         }
 
-        public void UnRegisterWithList(List<Type> consumerList)
+        public void UnRegisterWithList(List<Type> consumerList, params Type[] consumerIgnores)
         {
-            foreach (var consumer in Consumers.Keys.Where(x => !consumerList.Contains(x)))
+            foreach (var consumer in Consumers.Keys.Where(x => !consumerList.Contains(x) && !consumerIgnores.Contains(x)))
             {
                 UnRegister(consumer);
             }
