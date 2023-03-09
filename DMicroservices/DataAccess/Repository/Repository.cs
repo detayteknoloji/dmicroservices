@@ -53,6 +53,18 @@ namespace DMicroservices.DataAccess.Repository
             return DbSet.Any(predicate);
         }
 
+        /// <summary>
+        /// Aynı kayıt eklememek için objeyi varsa alt ilişkisiyle birlikte kontrol ederek true veya false dönderir.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="predicate">Sorgu</param>
+        /// <param name="includePaths">Join nesnelerinin classı</param>
+        /// <returns></returns>
+        public bool Any(Expression<Func<T, bool>> predicate, List<string> includePaths)
+        {
+            return DbSet.Include(includePaths).Any(predicate);
+        }
+
         public DbContext GetDbContext()
         {
             return DbContext;
@@ -71,6 +83,13 @@ namespace DMicroservices.DataAccess.Repository
         public int Count(Expression<Func<T, bool>> predicate)
         {
             IQueryable<T> iQueryable = DbSet
+            .Where(predicate);
+            return iQueryable.Count();
+        }
+
+        public int Count(Expression<Func<T, bool>> predicate, List<string> includePaths)
+        {
+            IQueryable<T> iQueryable = DbSet.Include(includePaths)
             .Where(predicate);
             return iQueryable.Count();
         }
