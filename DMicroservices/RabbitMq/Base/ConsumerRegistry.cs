@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using DMicroservices.RabbitMq.Consumer;
-using DMicroservices.RabbitMq.Producer;
 using DMicroservices.Utils.Logger;
 
 namespace DMicroservices.RabbitMq.Base
@@ -24,6 +21,22 @@ namespace DMicroservices.RabbitMq.Base
 
         public static ConsumerRegistry Instance => _instance.Value;
         #endregion
+
+        public void RegisterWithList(List<Type> consumerList)
+        {
+            foreach (var consumer in consumerList.Where(x => !Consumers.Keys.Contains(x)))
+            {
+                Register(consumer);
+            }
+        }
+
+        public void UnRegisterWithList(List<Type> consumerList, params Type[] consumerIgnores)
+        {
+            foreach (var consumer in Consumers.Keys.Where(x => !consumerList.Contains(x) && !consumerIgnores.Contains(x)))
+            {
+                UnRegister(consumer);
+            }
+        }
 
         public void Register(Type consumer)
         {
