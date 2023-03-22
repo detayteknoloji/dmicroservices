@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
+using DMicroservices.Base.Attributes;
 
 namespace DMicroservices.DataAccess.Tests.Models
 {
@@ -12,7 +13,11 @@ namespace DMicroservices.DataAccess.Tests.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
+        
+        //[DisableChangeTrack]
         public string Name { get; set; }
+
+        public string SurName { get; set; }
 
         public City City { get; set; }
 

@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+using DMicroservices.Base.Attributes;
 using DMicroservices.DataAccess.History;
 using DMicroservices.Utils.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace DMicroservices.DataAccess.Repository
 {
@@ -176,9 +179,19 @@ namespace DMicroservices.DataAccess.Repository
         /// <param name="entity">Güncellenecek entity</param>
         public void Update(T entity)
         {
-
             DbSet.Attach(entity);
             DbContext.Entry(entity).State = EntityState.Modified;
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
         }
 
         public void Update(Expression<Func<T, bool>> predicate, T entity)
