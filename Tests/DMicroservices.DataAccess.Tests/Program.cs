@@ -25,9 +25,10 @@ namespace DMicroservices.DataAccess.Tests
                 var yy = repo.GetRepository<Person>();
                 var xx  = yy.Get(x => true);
                     
-                    xx.Name = "23";
+                    xx.Name = "asdasd";
+                    xx.SurName= "asdasd";
 
-                    yy.Update(xx);
+                    yy.UpdateProperties(xx,"SurName","Name");
                 repo.SaveChanges();
             }
 
