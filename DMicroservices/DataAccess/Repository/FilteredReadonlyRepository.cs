@@ -171,6 +171,11 @@ namespace DMicroservices.DataAccess.Repository
             throw new NotImplementedException("This repository is read-only.");
         }
 
+        public void UpdateProperties(T entity, params string[] changeProperties)
+        {
+            throw new NotImplementedException("This repository is read-only.");
+        }
+
         public void Update(Expression<Func<T, bool>> predicate, T entity)
         {
             throw new NotImplementedException("This repository is read-only.");

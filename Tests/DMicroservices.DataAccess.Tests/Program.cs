@@ -22,19 +22,13 @@ namespace DMicroservices.DataAccess.Tests
 
             using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
             {
-                var yy = repo.GetRepository<City>().Get(x => x.Id==1);
-               
-                repo.GetRepository<City>().Update(yy);
+                var yy = repo.GetRepository<Person>();
+                var xx  = yy.Get(x => true);
+                    
+                    xx.Name = "asdasd";
+                    xx.SurName= "asdasd";
 
-                var cty = new City()
-                {
-                    Id = 1,
-                    Name = "asd"
-                };
-
-                repo.GetRepository<City>().Add(cty);
-
-
+                    yy.UpdateProperties(xx,"SurName","Name");
                 repo.SaveChanges();
             }
 

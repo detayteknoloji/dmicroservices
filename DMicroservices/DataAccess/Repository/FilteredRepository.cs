@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using DMicroservices.Base.Attributes;
 using DMicroservices.DataAccess.History;
 using DMicroservices.Utils.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -203,6 +204,42 @@ namespace DMicroservices.DataAccess.Repository
 
             DbSet.Attach(entity);
             DbContext.Entry(entity).State = EntityState.Modified;
+
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
+        }
+
+        public void UpdateProperties(T entity, params string[] changeProperties)
+        {
+            if (FilterProperty != null)
+                FilterProperty.SetValue(entity, FilterColumnValue);
+
+            DbSet.Attach(entity);
+            DbContext.Entry(entity).State = EntityState.Modified;
+
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                if (!changeProperties.Contains(propertyEntry.Metadata.PropertyInfo.Name))
+                    propertyEntry.IsModified = false;
+
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
         }
 
         public void Update(Expression<Func<T, bool>> predicate, T entity)

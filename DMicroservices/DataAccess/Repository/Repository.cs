@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+using DMicroservices.Base.Attributes;
 using DMicroservices.DataAccess.History;
 using DMicroservices.Utils.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace DMicroservices.DataAccess.Repository
 {
@@ -53,6 +56,18 @@ namespace DMicroservices.DataAccess.Repository
             return DbSet.Any(predicate);
         }
 
+        /// <summary>
+        /// Aynı kayıt eklememek için objeyi varsa alt ilişkisiyle birlikte kontrol ederek true veya false dönderir.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="predicate">Sorgu</param>
+        /// <param name="includePaths">Join nesnelerinin classı</param>
+        /// <returns></returns>
+        public bool Any(Expression<Func<T, bool>> predicate, List<string> includePaths)
+        {
+            return DbSet.Include(includePaths).Any(predicate);
+        }
+
         public DbContext GetDbContext()
         {
             return DbContext;
@@ -71,6 +86,13 @@ namespace DMicroservices.DataAccess.Repository
         public int Count(Expression<Func<T, bool>> predicate)
         {
             IQueryable<T> iQueryable = DbSet
+            .Where(predicate);
+            return iQueryable.Count();
+        }
+
+        public int Count(Expression<Func<T, bool>> predicate, List<string> includePaths)
+        {
+            IQueryable<T> iQueryable = DbSet.Include(includePaths)
             .Where(predicate);
             return iQueryable.Count();
         }
@@ -157,9 +179,39 @@ namespace DMicroservices.DataAccess.Repository
         /// <param name="entity">Güncellenecek entity</param>
         public void Update(T entity)
         {
-
             DbSet.Attach(entity);
             DbContext.Entry(entity).State = EntityState.Modified;
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
+        }
+
+        public void UpdateProperties(T entity, params string[] changeProperties)
+        {
+            DbSet.Attach(entity);
+            DbContext.Entry(entity).State = EntityState.Modified;
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                if (!changeProperties.Contains(propertyEntry.Metadata.PropertyInfo.Name))
+                    propertyEntry.IsModified = false;
+
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
         }
 
         public void Update(Expression<Func<T, bool>> predicate, T entity)

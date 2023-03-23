@@ -91,6 +91,12 @@ namespace DMicroservices.DataAccess.Repository
         void Update(T entity);
 
         /// <summary>
+        /// Verilen entity i güncelle.
+        /// </summary>
+        /// <param name="entity"></param>
+        void UpdateProperties(T entity,params string[] changeProperties);
+
+        /// <summary>
         /// predicate göre veriler düzenlenir.
         /// </summary>
         /// <param name="predicate"></param>
