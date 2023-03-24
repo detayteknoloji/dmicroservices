@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using DMicroservices.RabbitMq.Base;
+﻿using DMicroservices.RabbitMq.Base;
 using DMicroservices.Utils.Logger;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace DMicroservices.RabbitMq.Producer
 {
@@ -13,12 +13,16 @@ namespace DMicroservices.RabbitMq.Producer
     /// </summary>
     public class RabbitMqPublisher<T>
     {
+        private readonly JsonSerializerSettings _jsonSerializerSettings;
         #region Singleton Section
         private static readonly Lazy<RabbitMqPublisher<T>> _instance = new Lazy<RabbitMqPublisher<T>>(() => new RabbitMqPublisher<T>());
 
         private RabbitMqPublisher()
         {
-
+            _jsonSerializerSettings = new JsonSerializerSettings()
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+            };
         }
 
         public static RabbitMqPublisher<T> Instance => _instance.Value;
@@ -47,7 +51,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
                     return 0;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
@@ -55,16 +59,42 @@ namespace DMicroservices.RabbitMq.Producer
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
                     properties.DeliveryMode = DeliveryMode;
-                    channel.BasicPublish(string.Empty, queueName, properties,Encoding.UTF8.GetBytes(jsonData));
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
                     return channel.MessageCount(queueName);
                 }
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
             }
 
             return 0;
+        }
+
+        public bool PublishWithStatus(string queueName, T message)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
+                    return false;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.DeliveryMode = DeliveryMode;
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -78,7 +108,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(messages, _jsonSerializerSettings)} QueueName: {queueName}");
                     return 0;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
@@ -93,13 +123,13 @@ namespace DMicroservices.RabbitMq.Producer
                         batchPublish.Add(string.Empty, queueName, true, properties, Encoding.UTF8.GetBytes(jsonData));
                     }
                     batchPublish.Publish();
-                    
+
                     return channel.MessageCount(queueName);
                 }
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(messages, _jsonSerializerSettings)} QueueName: {queueName}");
             }
 
             return 0;
@@ -116,7 +146,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(messages, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers}");
                     return 0;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
@@ -131,13 +161,13 @@ namespace DMicroservices.RabbitMq.Producer
                         batchPublish.Add(string.Empty, queueName, true, properties, Encoding.UTF8.GetBytes(message));
                     }
                     batchPublish.Publish();
-                    
+
                     return channel.MessageCount(queueName);
                 }
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(messages, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers}");
             }
 
             return 0;
@@ -155,7 +185,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers}");
                     return;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
@@ -169,7 +199,7 @@ namespace DMicroservices.RabbitMq.Producer
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers}");
             }
         }
 
@@ -186,7 +216,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers} Priority: {priority}");
                     return;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, 255))
@@ -201,7 +231,7 @@ namespace DMicroservices.RabbitMq.Producer
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers} Priority: {priority}");
             }
         }
 
@@ -218,7 +248,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Priority: {priority}");
                     return;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, 255))
@@ -232,7 +262,7 @@ namespace DMicroservices.RabbitMq.Producer
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Priority: {priority}");
             }
         }
 
@@ -248,7 +278,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(exchangeName) || key == null)
                 {
-                    ElasticLogger.Instance.Info("ExchangeName or Key was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! ExchangeName or key was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} Exchange: {exchangeName} Key: {key}");
                     return;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.Connection.CreateModel())
@@ -261,7 +291,7 @@ namespace DMicroservices.RabbitMq.Producer
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} Exchange: {exchangeName} Key: {key}");
             }
         }
 
@@ -278,7 +308,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(exchangeName) || key == null || headers == null)
                 {
-                    ElasticLogger.Instance.Info("ExchangeName, Key or Headers was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! ExchangeName or key was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} Exchange: {exchangeName} Key: {key}");
                     return;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.Connection.CreateModel())
@@ -292,12 +322,12 @@ namespace DMicroservices.RabbitMq.Producer
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} Exchange: {exchangeName} Key: {key}");
             }
         }
 
         /// <summary>
-        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// Kuyruğun içerisinde kaç adet mesaj olduğunu döner.
         /// </summary>
         /// <param name="queueName">kuyruk adı</param>
         public uint MessageCount(string queueName, byte priority)
@@ -306,7 +336,7 @@ namespace DMicroservices.RabbitMq.Producer
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Info("QueueName was null");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"QueueName: {queueName} Priority: {priority}");
                     return 0;
                 }
                 using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, priority))
@@ -316,7 +346,7 @@ namespace DMicroservices.RabbitMq.Producer
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, "RabbitMQPublisher");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! QueueName: {queueName} Priority: {priority}");
             }
 
             return 0;
