@@ -163,7 +163,7 @@ namespace DMicroservices.RabbitMq.Consumer
                     }
                     catch (Exception ex)
                     {
-                        ElasticLogger.Instance.Error(ex, "RabbitMQ/RabbitmqConsumer");
+                        ElasticLogger.Instance.Error(ex, $"RabbitMQ/RabbitmqConsumer Error! Queue: {ListenQueueName}");
                     }
                 }
                 Debug.WriteLine($"Consumer {ListenQueueName} start completed.");

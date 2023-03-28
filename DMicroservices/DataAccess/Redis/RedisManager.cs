@@ -6,6 +6,7 @@ using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace DMicroservices.DataAccess.Redis
@@ -96,6 +97,18 @@ namespace DMicroservices.DataAccess.Redis
             if (keys.Any(p => p.ToString().Contains(key)))
             {
                 keys.Where(p => p.ToString().Contains(key)).ToList().ForEach(p => DeleteByKey(p));
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool DeleteByKeyLikeWithRegex(string key, string regexPattern)
+        {
+            List<RedisKey> keys = GetAllKeys();
+            if (keys.Any(p => Regex.IsMatch(p.ToString(), regexPattern)))
+            {
+                keys.Where(p => Regex.IsMatch(p.ToString(), regexPattern)).ToList().ForEach(p => DeleteByKey(p));
                 return true;
             }
 
@@ -282,7 +295,6 @@ namespace DMicroservices.DataAccess.Redis
             return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
         }
 
-
         /// <summary>
         /// Önbellekte bulunan verilerin benzerliğine göre anahtar listesini getirir.
         /// </summary>
@@ -373,7 +385,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="e"></param>
         private void ConnMultiplexer_InternalError(object sender, InternalErrorEventArgs e)
         {
-            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_InternalError)}: {e.Exception}");
+            ElasticLogger.Instance.Error(e.Exception, $"{nameof(ConnMultiplexer_InternalError)}");
         }
 
         /// <summary>
@@ -414,7 +426,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="e"></param>
         private void ConnMultiplexer_ConnectionFailed(object sender, ConnectionFailedEventArgs e)
         {
-            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConnectionFailed)}: {e.Exception}");
+            ElasticLogger.Instance.Error(e.Exception, $"{nameof(ConnMultiplexer_ConnectionFailed)}");
         }
 
         /// <summary>
@@ -424,9 +436,8 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="e"></param>
         private void ConnMultiplexer_ConnectionRestored(object sender, ConnectionFailedEventArgs e)
         {
-            ElasticLogger.Instance.Info($"{nameof(ConnMultiplexer_ConnectionRestored)}: {e.Exception}");
+            ElasticLogger.Instance.Error(e.Exception, $"{nameof(ConnMultiplexer_ConnectionRestored)}");
         }
-
 
         public void WaitForLock(string lockName, TimeSpan? delayTimeSpan = null, TimeSpan? lockTimeout = null, TimeSpan? keyExpireTimeSpan = null)
         {
@@ -459,12 +470,15 @@ namespace DMicroservices.DataAccess.Redis
 
             throw new TimeoutException($"Timeout exception, {lockName} cant be unlock.");
         }
+
         public void Unlock(string lockName)
         {
             DeleteByKey($"LOCK-{lockName}");
         }
-        
 
+        /// <summary>
+        /// RedLock implementation
+        /// </summary>
         public RedLockFactory GetLockFactory
         {
             get
