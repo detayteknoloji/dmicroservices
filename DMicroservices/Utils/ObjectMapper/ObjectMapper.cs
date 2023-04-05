@@ -84,10 +84,12 @@ namespace DMicroservices.Utils.ObjectMapper
         /// <param name="targetProperty"></param>
         private static void MapProperty(PropertyInfo sourceProperty, object source, object target, PropertyInfo targetProperty)
         {
-            object soruceValue = sourceProperty.GetValue(source);
-            if (targetProperty.PropertyType == sourceProperty.PropertyType && soruceValue != null)
-                targetProperty.SetValue(target, sourceProperty.GetValue(source));
-
+            if (sourceProperty.CanRead && targetProperty.CanWrite)
+            {
+                object soruceValue = sourceProperty.GetValue(source);
+                if (targetProperty.PropertyType == sourceProperty.PropertyType && soruceValue != null)
+                    targetProperty.SetValue(target, sourceProperty.GetValue(source));
+            }
         }
     }
 }
