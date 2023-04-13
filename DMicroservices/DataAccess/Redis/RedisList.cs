@@ -98,7 +98,11 @@ namespace DMicroservices.DataAccess.Redis
         }
         public void CopyTo(T[] array, int arrayIndex)
         {
-            GetRedisDb().ListRange(_key).CopyTo(array, arrayIndex);
+            var range = GetRedisDb().ListRange(_key);
+            for (var i = 0; i < range.Length; i++)
+            {
+                array[i] = Deserialize<T>(range[i]);
+            }
         }
         public int IndexOf(T item)
         {
