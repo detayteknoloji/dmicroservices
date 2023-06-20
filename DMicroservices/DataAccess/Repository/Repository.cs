@@ -135,6 +135,13 @@ namespace DMicroservices.DataAccess.Repository
             return iQueryable.ToList().FirstOrDefault();
         }
 
+        public TResult Get<TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> @select)
+        {
+            IQueryable<T> iQueryable = DbSet
+                .Where(predicate);
+            return iQueryable.Select(@select).FirstOrDefault();
+        }
+
         public T Get(Expression<Func<T, bool>> predicate, List<string> includePaths)
         {
             IQueryable<T> iQueryable = DbSet
@@ -165,6 +172,13 @@ namespace DMicroservices.DataAccess.Repository
         public IQueryable<dynamic> SelectList(Expression<Func<T, bool>> where, Expression<Func<T, dynamic>> select)
         {
             throw new NotImplementedException();
+        }
+
+        public IQueryable<TResult> SelectList<TResult>(Expression<Func<T, bool>> @where, Expression<Func<T, TResult>> @select)
+        {
+            IQueryable<TResult> iQueryable = DbSet
+                .Where(@where).Select(@select);
+            return iQueryable;
         }
 
         public List<T> SendSql(string sqlQuery)

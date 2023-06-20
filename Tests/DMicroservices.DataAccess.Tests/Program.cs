@@ -23,13 +23,27 @@ namespace DMicroservices.DataAccess.Tests
             using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
             {
                 var yy = repo.GetRepository<Person>();
-                var xx  = yy.Get(x => true);
-                    
-                    xx.Name = "asdasd";
-                    xx.SurName= "asdasd";
 
-                    yy.UpdateProperties(xx,"SurName","Name");
-                repo.SaveChanges();
+
+                var person2  = yy.Get(x => x.Id.Equals(2));
+
+
+
+                var person = yy.Get(x => x.Id.Equals(2), person => new {person.Name, person.Id});
+
+
+
+
+                var personList2 = yy.GetAll(x => x.Id.Equals(2)).ToList();
+
+
+                
+                var personList = yy.SelectList(x => x.Id.Equals(2), person => new {person.Name,person.City});
+                foreach (var res in personList)
+                {
+                    
+                }
+
             }
 
             Console.ReadLine();
