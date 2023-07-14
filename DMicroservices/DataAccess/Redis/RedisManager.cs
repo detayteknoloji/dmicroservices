@@ -79,6 +79,23 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
+        /// Redis önbellekte tutulan veriyi getirir.
+        /// </summary>
+        /// <param name="key">Önbellek anahtarı</param>
+        /// <returns>
+        /// <list type="bullet">
+        /// <item><see cref="Tuple{T1,T2}.Item1"/>: Önbellekte tutulan verinin kalan zamanı.</item>
+        /// <item><see cref="Tuple{T1,T2}.Item2"/>: Önbellekte tutulan veri.</item>
+        /// </list>
+        /// </returns>
+        public Tuple<TimeSpan?, string> GetWithExpiry(string key)
+        {
+            var cacheValue = Connection.GetDatabase().StringGetWithExpiry(key);
+            return new Tuple<TimeSpan?, string>(cacheValue.Expiry, cacheValue.Value);
+        }
+
+
+        /// <summary>
         /// Önbellekte tutulan veriyi siler.
         /// </summary>
         /// <param name="key"></param>
@@ -194,6 +211,28 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
+        /// Önbellekte tutulan byte[] tipinde veriyi kalan zamanıyla birlikte döner.
+        /// </summary>
+        /// <param name="key">Önbellek anahtarı</param>
+        ///  /// <returns>
+        /// <list type="bullet">
+        /// <item><see cref="Tuple{T1,T2}.Item1"/>: Önbellekte tutulan verinin kalan zamanı.</item>
+        /// <item><see cref="Tuple{T1,T2}.Item2"/>: Önbellekte tutulan veri.</item>
+        /// </list>
+        /// </returns>
+        public Tuple<TimeSpan?, T> GetDeserializeBytesWithExpiry<T>(string key)
+        {
+            if (Exists(key))
+            {
+                RedisValueWithExpiry redisValue = Connection.GetDatabase().StringGetWithExpiry(key);
+                if (redisValue.Value != RedisValue.Null && redisValue.Value.HasValue)
+                    return new Tuple<TimeSpan?, T>(redisValue.Expiry, Deserialize<T>(redisValue.Value));
+            }
+
+            return default(Tuple<TimeSpan?, T>);
+        }
+
+        /// <summary>
         /// Anahtara göre var olup olmadığını döner
         /// </summary>
         /// <param name="key"></param>
@@ -230,6 +269,31 @@ namespace DMicroservices.DataAccess.Redis
             if (this.Exists(key))
             {
                 obj = this.GetDeserializeBytes<T>(key);
+                if (obj == null)
+                {
+                    this.DeleteByKey(key);
+                    return false;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Anahtara göre var olan önbelleği döner
+        /// </summary>
+        /// <param name="key">Önbellek anahtarı</param>
+        /// <param name="obj"><see cref="Tuple{T1,T2}.Item1"/>: Önbellekte tutulan verinin kalan zamanı.
+        /// <see cref="Tuple{T1,T2}.Item2"/>: Önbellekte tutulan veri.</param>
+        public bool GetIfExistsWithExpiry<T>(string key, out Tuple<TimeSpan?, T> obj) where T : class
+        {
+            obj = null;
+
+            if (this.Exists(key))
+            {
+                obj = this.GetDeserializeBytesWithExpiry<T>(key);
                 if (obj == null)
                 {
                     this.DeleteByKey(key);
