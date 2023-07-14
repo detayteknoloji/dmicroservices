@@ -54,6 +54,13 @@ namespace DMicroservices.DataAccess.Repository
         /// <summary>
         /// İstenilen veriyi single olarak getirir.
         /// </summary>
+        /// <param name="predicate"></param>
+        /// <returns></returns>
+        TResult Get<TResult>(Expression<Func<T, bool>> predicate, Expression<Func<T, TResult>> @select);
+
+        /// <summary>
+        /// İstenilen veriyi single olarak getirir.
+        /// </summary>
         /// <returns></returns>
         T Get(Expression<Func<T, bool>> predicate, List<string> includePaths);
 
@@ -64,6 +71,14 @@ namespace DMicroservices.DataAccess.Repository
         /// <param name="select">Seçilecek kolonlar</param>
         /// <returns></returns>
         IQueryable<dynamic> SelectList(Expression<Func<T, bool>> @where, Expression<Func<T, dynamic>> @select);
+
+        /// <summary>
+        /// Getirilen veri üzerinde veri gelmeden kolonları seç.
+        /// </summary>
+        /// <param name="where">Veri kısıtlamaları</param>
+        /// <param name="select">Seçilecek kolonlar</param>
+        /// <returns></returns>
+        IQueryable<TResult> SelectList<TResult>(Expression<Func<T, bool>> @where, Expression<Func<T, TResult>> @select);
 
         /// <summary>
         /// Entity ile sql sorgusu göndermek için kullanılır.
