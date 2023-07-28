@@ -97,6 +97,33 @@ namespace DMicroservices.RabbitMq.Producer
             return false;
         }
 
+        public bool PublishWithStatus(string queueName, T message, byte priority)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
+                    return false;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.DeliveryMode = DeliveryMode;
+                    properties.Priority = priority;
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Aldığı mesajı aldığı kuyruğa yazar
         /// </summary>
