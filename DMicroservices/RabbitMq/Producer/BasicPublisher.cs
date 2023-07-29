@@ -97,7 +97,7 @@ namespace DMicroservices.RabbitMq.Producer
             return false;
         }
 
-        public bool PublishWithStatus(string queueName, T message, byte priority)
+        public bool PublishWithStatus(string queueName, T message, byte priority, byte channelPriority = 255)
         {
             try
             {
@@ -106,7 +106,7 @@ namespace DMicroservices.RabbitMq.Producer
                     ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName}");
                     return false;
                 }
-                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, channelPriority))
                 {
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
@@ -237,7 +237,7 @@ namespace DMicroservices.RabbitMq.Producer
         /// <param name="message">mesaj</param>
         /// <param name="headers"></param>
         /// <param name="priority"></param>
-        public void Publish(string queueName, T message, Dictionary<string, object> headers, byte priority)
+        public void Publish(string queueName, T message, Dictionary<string, object> headers, byte priority, byte channelPriority = 255)
         {
             try
             {
@@ -246,7 +246,7 @@ namespace DMicroservices.RabbitMq.Producer
                     ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers} Priority: {priority}");
                     return;
                 }
-                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, 255))
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, channelPriority))
                 {
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
@@ -269,7 +269,7 @@ namespace DMicroservices.RabbitMq.Producer
         /// <param name="message">mesaj</param>
         /// <param name="headers"></param>
         /// <param name="priority"></param>
-        public void Publish(string queueName, T message, byte priority)
+        public void Publish(string queueName, T message, byte priority, byte channelPriority = 255)
         {
             try
             {
@@ -278,7 +278,7 @@ namespace DMicroservices.RabbitMq.Producer
                     ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Priority: {priority}");
                     return;
                 }
-                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, 255))
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, channelPriority))
                 {
                     string jsonData = JsonConvert.SerializeObject(message);
                     IBasicProperties properties = channel.CreateBasicProperties();
@@ -357,23 +357,23 @@ namespace DMicroservices.RabbitMq.Producer
         /// Kuyruğun içerisinde kaç adet mesaj olduğunu döner.
         /// </summary>
         /// <param name="queueName">kuyruk adı</param>
-        public uint MessageCount(string queueName, byte priority)
+        public uint MessageCount(string queueName, byte channelPriority)
         {
             try
             {
                 if (string.IsNullOrEmpty(queueName))
                 {
-                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"QueueName: {queueName} Priority: {priority}");
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"QueueName: {queueName} Priority: {channelPriority}");
                     return 0;
                 }
-                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, priority))
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName, channelPriority))
                 {
                     return channel.MessageCount(queueName);
                 }
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! QueueName: {queueName} Priority: {priority}");
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! QueueName: {queueName} Priority: {channelPriority}");
             }
 
             return 0;
