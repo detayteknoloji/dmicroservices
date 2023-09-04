@@ -10,8 +10,8 @@
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<OutputType>Library</OutputType>
 		<IsPackable>true</IsPackable>
-		<AssemblyVersion>3.0.74-alpha</AssemblyVersion>
-		<FileVersion>3.0.74-alpha</FileVersion>
+		<AssemblyVersion>3.0.74</AssemblyVersion>
+		<FileVersion>3.0.74</FileVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
