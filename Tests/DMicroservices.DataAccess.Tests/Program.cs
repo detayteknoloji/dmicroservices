@@ -19,6 +19,7 @@ namespace DMicroservices.DataAccess.Tests
     {
         static void Main(string[] args)
         {
+            //Test
 
             using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
             {
