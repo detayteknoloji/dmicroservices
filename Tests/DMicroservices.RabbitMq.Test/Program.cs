@@ -1,9 +1,10 @@
-﻿using System;
+﻿using DMicroservices.RabbitMq.Base;
+using DMicroservices.RabbitMq.Producer;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
-using DMicroservices.RabbitMq.Base;
-using DMicroservices.RabbitMq.Producer;
 
 namespace DMicroservices.RabbitMq.Test
 {
@@ -11,15 +12,17 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
-            BasicPublishTest();
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer), 2);
+            Console.ReadLine();
+            //BasicPublishTest();
             //ExchangePublishTest();
         }
 
         static void BasicPublishTest()
         {
             Debug.WriteLine("all register");
-            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
-            
+
+
             //Debug.WriteLine("all register");
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
             //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
@@ -38,7 +41,7 @@ namespace DMicroservices.RabbitMq.Test
 
         static void ExchangePublishTest()
         {
-            ConsumerRegistry.Instance.Register(typeof(ExchangeConsumer));
+            ConsumerRegistry.Instance.Register(typeof(ExchangeConsumer), 2);
 
             ThreadPool.QueueUserWorkItem(delegate
             {
