@@ -33,7 +33,7 @@
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0-rc.1.23419.6" />
 
 		<PackageReference Include="RedLock.net" Version="2.3.2" />
-		<PackageReference Include="Serilog" Version="3.1.0-dev-02064" />
+		<PackageReference Include="Serilog" Version="3.1.0-dev-02070" />
 		<PackageReference Include="Serilog.Sinks.ElasticSearch" Version="9.0.3" />
 
 		<PackageReference Include="MessagePack" Version="2.6.100-alpha" />
