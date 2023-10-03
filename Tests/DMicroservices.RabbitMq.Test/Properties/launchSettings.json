@@ -3,7 +3,9 @@
     "DMicroservices.RabbitMq.Test": {
       "commandName": "Project",
       "environmentVariables": {
-        "RABBITMQ_URI": "amqp://root:root@127.0.0.1:13034"
+        "RABBITMQ_URI": "amqp://root:root@127.0.0.1:13034",
+        "ELASTIC_URI": "http://localhost:13030/",
+        "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}"
       }
     }
   }

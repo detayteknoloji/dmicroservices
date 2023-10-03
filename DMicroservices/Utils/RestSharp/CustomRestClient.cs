@@ -12,9 +12,9 @@ namespace DMicroservices.Utils.RestSharp
             _baseUrl = baseUrl;
         }
 
-        public override IRestResponse Execute(IRestRequest request)
+        public RestResponse Execute(RestRequest request)
         {
-            var result = base.Execute(request);
+            var result = ExecuteAsync(request).Result;
             if (result.StatusCode != HttpStatusCode.OK)
             {
                 ElasticLogger.Instance.Info($"Request not OK. Requested Url : {_baseUrl} Status Code : {result.StatusCode} Content : {result.Content} ");

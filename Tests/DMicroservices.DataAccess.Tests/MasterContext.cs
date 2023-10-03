@@ -43,7 +43,7 @@ namespace DMicroservices.DataAccess.Tests
                 }
                 catch
                 {
-                    serverVersion = ServerVersion.FromString("8.0.23");
+                    serverVersion = ServerVersion.Parse("8.0.23");
                 }
                 optionsBuilder.UseMySql(MYSQL_URI, serverVersion);
                 optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);

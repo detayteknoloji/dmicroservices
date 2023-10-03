@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
-		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<RepositoryUrl>https://github.com/detayteknoloji/dmicroservices</RepositoryUrl>
 		<Authors>Serhat Boyraz</Authors>
 		<Company>Detaysoft</Company>
-		<Version>3.0.74</Version>
+		<Version>8.0.0</Version>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<OutputType>Library</OutputType>
 		<IsPackable>true</IsPackable>
-		<AssemblyVersion>3.0.74.0</AssemblyVersion>
-		<FileVersion>3.0.74.0</FileVersion>
+		<AssemblyVersion>8.0.0.0</AssemblyVersion>
+		<FileVersion>8.0.0.0</FileVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -26,24 +26,24 @@
 
 	<ItemGroup>
 
-		<PackageReference Include="Elasticsearch.Net" Version="7.10.1" />
+		<PackageReference Include="Elasticsearch.Net" Version="7.17.5" />
 
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0-rc.1.23419.6" />
 
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="5.0.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0-rc.1.23419.6" />
 
 		<PackageReference Include="RedLock.net" Version="2.3.2" />
-		<PackageReference Include="Serilog" Version="2.9.0" />
-		<PackageReference Include="Serilog.Sinks.ElasticSearch" Version="8.0.1" />
+		<PackageReference Include="Serilog" Version="3.1.0-dev-02064" />
+		<PackageReference Include="Serilog.Sinks.ElasticSearch" Version="9.0.3" />
 
-		<PackageReference Include="MessagePack" Version="2.2.85" />
-		<PackageReference Include="MongoDB.Bson" Version="2.11.4" />
-		<PackageReference Include="MongoDB.Driver" Version="2.11.4" />
-		<PackageReference Include="NEST" Version="7.10.1" />
-		<PackageReference Include="StackExchange.Redis" Version="2.2.4" />
-		<PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-		<PackageReference Include="RabbitMQ.Client" Version="6.2.1" />
-		<PackageReference Include="RestSharp" Version="106.10.1" />
+		<PackageReference Include="MessagePack" Version="2.6.100-alpha" />
+		<PackageReference Include="MongoDB.Bson" Version="2.21.0" />
+		<PackageReference Include="MongoDB.Driver" Version="2.21.0" />
+		<PackageReference Include="NEST" Version="7.17.5" />
+		<PackageReference Include="StackExchange.Redis" Version="2.6.122" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="RabbitMQ.Client" Version="6.6.0-beta.0" />
+		<PackageReference Include="RestSharp" Version="110.2.1-alpha.0.13" />
 	</ItemGroup>
 
 </Project>

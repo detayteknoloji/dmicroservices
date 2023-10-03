@@ -12,6 +12,7 @@ using System.Threading;
 using DMicroservices.DataAccess.Repository;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
+using DMicroservices.DataAccess.MongoRepository;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -46,9 +47,9 @@ namespace DMicroservices.DataAccess.Tests
 
             }
 
-            Console.ReadLine();
+            //Console.ReadLine();
             //SelectDto_Test();
-            //RedisManager.Instance.Exists("hi");
+            RedisManager.Instance.Exists("hi");
             //SelectDto_Test();
             //using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
             //{
@@ -71,16 +72,16 @@ namespace DMicroservices.DataAccess.Tests
 
             //var getSearches = testRedisList.Where(x => x.IntValue == 3).ToList();
 
-            //using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
-            //{
-            //    repo.Add(new Document()
-            //    {
-            //        Id = Guid.NewGuid().ToString(),
-            //        Data = new byte[] { 1, 2, 3, 4, 5 }
-            //    });
+            using (var repo = MongoRepositoryFactory.CreateMongoRepository<Document>())
+            {
+                repo.Add(new Document()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Data = new byte[] { 1, 2, 3, 4, 5 }
+                });
 
-            //    var document = repo.GetAll(x => true).ToList();
-            //}
+                var document = repo.GetAll(x => true).ToList();
+            }
 
             //try
             //{
@@ -102,16 +103,14 @@ namespace DMicroservices.DataAccess.Tests
             //}
 
 
-            return;
-
             using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
             {
-                //var city = new City() { Name = "sivas" };
-                //var t1 = new Teacher() { Branch = 1, Name = "serhat", City = city };
-                //var t2 = new Teacher() { Branch = 2, Name = "süha", City = city };
+                var city = new City() { Name = "sivas" };
+                var t1 = new Teacher() { Branch = 1, Name = "serhat", City = city };
+                var t2 = new Teacher() { Branch = 2, Name = "süha", City = city };
 
-                //var s1 = new Student() { StudentNum = 5858, Name = "emre", City = city };
-                //var s2 = new Student() { StudentNum = 5860, Name = "duhan", City = city };
+                var s1 = new Student() { StudentNum = 5858, Name = "emre", City = city };
+                var s2 = new Student() { StudentNum = 5860, Name = "duhan", City = city };
                 Random r = new Random();
                 var cty = uow.GetRepository<City>().Get(y => y.Id == 1);
 
@@ -124,7 +123,7 @@ namespace DMicroservices.DataAccess.Tests
 
 
 
-                uow.GetRepository<City>().Update(cc);
+                uow.GetRepository<City>().Add(cc);
 
                 uow.SaveChanges();
 

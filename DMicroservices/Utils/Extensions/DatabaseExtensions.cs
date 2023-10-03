@@ -39,7 +39,8 @@ namespace DMicroservices.Utils.Extensions
                 {
                     foreach (var navigation in entityNavigation)
                     {
-                        var inverseNavigation = navigation.FindInverse();
+
+                        var inverseNavigation = navigation.Inverse;
                         if (inverseNavigation != null)
                             includedNavigation.Add(inverseNavigation);
                     }
@@ -48,7 +49,8 @@ namespace DMicroservices.Utils.Extensions
                 while (stack.Count > 0 && !stack.Peek().MoveNext())
                     stack.Pop();
                 if (stack.Count == 0) break;
-                entityType = stack.Peek().Current.GetTargetType();
+
+                entityType = stack.Peek().Current.TargetEntityType;
             }
         }
 
