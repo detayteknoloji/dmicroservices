@@ -142,13 +142,13 @@ namespace DMicroservices.RabbitMq.Consumer
                                 string.IsNullOrEmpty(ExchangeContent.ExchangeType))
                                 throw new Exception("ExchangeContent contains null object(s)!");
                             _rabbitMqChannel =
-                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName, ConnectionType.CONSUMER);
+                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName);
                         }
                         else
                         {
                             _rabbitMqChannel = MaxPriority > 0
-                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority, ConnectionType.CONSUMER)
-                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName, ConnectionType.CONSUMER);
+                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority)
+                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName);
                         }
 
                         if (PrefectCount != 0)

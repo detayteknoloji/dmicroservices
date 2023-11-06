@@ -19,16 +19,35 @@ namespace DMicroservices.RabbitMq.Base
         private ConsumerRegistry()
         {
             Consumers = new Dictionary<string, IConsumer>();
+            ConsumersTypeOf = new Dictionary<Type, IConsumer>();
         }
 
         public static ConsumerRegistry Instance => _instance.Value;
         #endregion
+
+        private Dictionary<Type, IConsumer> ConsumersTypeOf { get; set; }
+
+        public void RegisterWithList(List<Type> consumerList)
+        {
+            foreach (var consumer in consumerList.Where(x => !ConsumersTypeOf.Keys.Contains(x)))
+            {
+                Register(consumer);
+            }
+        }
 
         public void RegisterWithList(List<ConsumerActiveModel> consumerList)
         {
             foreach (var i in consumerList)
             {
                 Register(i.Type, i.ParallelismCount);
+            }
+        }
+
+        public void UnRegisterWithList(List<Type> consumerList, params Type[] consumerIgnores)
+        {
+            foreach (var consumer in ConsumersTypeOf.Keys.Where(x => !consumerList.Contains(x) && !consumerIgnores.Contains(x)))
+            {
+                UnRegister(consumer);
             }
         }
 
@@ -52,6 +71,32 @@ namespace DMicroservices.RabbitMq.Base
             foreach (var consumer in unRegisterKeyList)
             {
                 UnRegister(consumer);
+            }
+        }
+
+        public void Register(Type consumer)
+        {
+            if (consumer.GetInterfaces().Length == 0 || consumer.GetInterfaces().Any(x => x.GetInterface("IConsumer") != null))
+                throw new Exception("Consumer must be implement IConsumer.");
+
+            try
+            {
+                if (ConsumersTypeOf.All(keyValue => keyValue.Key != consumer))
+                {
+                    //register
+                    var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
+
+                    lock (ConsumersTypeOf)
+                    {
+                        ConsumersTypeOf.Add(consumer, consumerObject);
+                    }
+                }
+                ConsumersTypeOf[consumer].StartConsume();
+
+            }
+            catch (Exception e)
+            {
+                ElasticLogger.Instance.Error(e, $"ConsumerRegistry throw an error : {e.Message}");
             }
         }
 
@@ -97,6 +142,31 @@ namespace DMicroservices.RabbitMq.Base
             {
                 if (Consumers.Keys.Any(p => p == consumerKey))
                     Consumers[consumerKey].StopConsume();
+            }
+        }
+
+        public void UnRegister(Type consumer)
+        {
+            lock (Consumers)
+            {
+                ConsumersTypeOf[consumer].StopConsume();
+            }
+        }
+
+        public void ClearAllRegisters(params Type[] consumerIgnores)
+        {
+            lock (ConsumersTypeOf)
+            {
+                var consumerList = ConsumersTypeOf
+                    .Where(x => consumerIgnores.All(m => x.Key.FullName != null && !x.Key.FullName.Equals(m.FullName))).ToList();
+
+                List<Task> stopConsumeTaskList = new List<Task>();
+                foreach (var consumerItem in consumerList)
+                {
+                    stopConsumeTaskList.Add(consumerItem.Value.StopConsume());
+                }
+
+                Task.WaitAll(stopConsumeTaskList.ToArray());
             }
         }
 

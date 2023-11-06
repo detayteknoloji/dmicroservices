@@ -135,7 +135,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName, ConnectionType connectionType)
+        public IModel GetChannel(string queueName)
         {
             IModel channel = GetConnection().CreateModel();
             channel.QueueDeclare(queueName, true, false, false, null);
@@ -146,7 +146,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName, byte maxPriority, ConnectionType connectionType)
+        public IModel GetChannel(string queueName, byte maxPriority)
         {
             IModel channel = GetConnection().CreateModel();
             channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
@@ -159,7 +159,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Exchange Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName, ConnectionType connectionType)
+        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName)
         {
             IModel channel = GetConnection().CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
