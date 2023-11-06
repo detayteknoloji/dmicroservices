@@ -64,14 +64,18 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private void RabbitMqChannelShutdown()
         {
+            ElasticLogger.Instance.InfoSpecificIndexFormat($"Only RabbitMqChannelShutdown Signal", ConstantString.RABBITMQ_INDEX_FORMAT);
+
             try
             {
                 _eventingBasicConsumer.OnCancel(_eventingBasicConsumer.ConsumerTags);
                 _rabbitMqChannel?.Dispose();
                 _rabbitMqChannel = null;
             }
-            catch
+            catch(Exception e)
             {
+                ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"RabbitMqChannelShutdown Signal Error", ConstantString.RABBITMQ_INDEX_FORMAT);
+
                 //ignored
             }
 
@@ -82,20 +86,20 @@ namespace DMicroservices.RabbitMq.Consumer
                 return;
 
             StartConsume();
-
         }
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
         {
-            var jsonData = Encoding.UTF8.GetString(e.Body.ToArray());
+            string jsonData = null;
             try
             {
+                jsonData = Encoding.UTF8.GetString(e.Body.ToArray());
                 var parsedData = JsonConvert.DeserializeObject<T>(jsonData);
                 DataReceivedAction(parsedData, e);
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"DocumentConsumer generic data received exception: {ex.Message}", ConstantString.RABBITMQ_INDEX_FORMAT, new System.Collections.Generic.Dictionary<string, object>() { { "Data:", jsonData } });
+                ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"DocumentConsumer generic data received exception: {ex.Message}, ConsumerTag {e?.ConsumerTag}", ConstantString.RABBITMQ_INDEX_FORMAT, new System.Collections.Generic.Dictionary<string, object>() { { "Data:", jsonData } });
                 _rabbitMqChannel.BasicNack(e.DeliveryTag, false, false);
             }
         }

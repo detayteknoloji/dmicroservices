@@ -137,7 +137,7 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetChannel(string queueName, ConnectionType connectionType)
         {
-            IModel channel = GetConnection(connectionType).CreateModel();
+            IModel channel = GetConnection().CreateModel();
             channel.QueueDeclare(queueName, true, false, false, null);
             return channel;
         }
@@ -148,7 +148,7 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetChannel(string queueName, byte maxPriority, ConnectionType connectionType)
         {
-            IModel channel = GetConnection(connectionType).CreateModel();
+            IModel channel = GetConnection().CreateModel();
             channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
             {
                 {"x-max-priority", maxPriority}
@@ -161,7 +161,7 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName, ConnectionType connectionType)
         {
-            IModel channel = GetConnection(connectionType).CreateModel();
+            IModel channel = GetConnection().CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
             channel.QueueDeclare(queueName, true, false, false);
             channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
