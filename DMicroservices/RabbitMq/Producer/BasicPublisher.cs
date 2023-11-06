@@ -274,6 +274,38 @@ namespace DMicroservices.RabbitMq.Producer
         /// <param name="queueName">kuyruk adı</param>
         /// <param name="message">mesaj</param>
         /// <param name="headers"></param>
+        public bool PublishWithStatus(string queueName, T message, Dictionary<string, object> headers)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers}");
+                    return false;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    string jsonData = JsonConvert.SerializeObject(message);
+                    IBasicProperties properties = channel.CreateBasicProperties();
+                    properties.Headers = headers;
+                    properties.DeliveryMode = DeliveryMode;
+                    channel.BasicPublish(string.Empty, queueName, properties, Encoding.UTF8.GetBytes(jsonData));
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! RabbitMQPublisher Error! Message: {JsonConvert.SerializeObject(message, _jsonSerializerSettings)} QueueName: {queueName} Headers: {headers}");
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Aldığı mesajı aldığı kuyruğa yazar
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        /// <param name="message">mesaj</param>
+        /// <param name="headers"></param>
         /// <param name="priority"></param>
         public bool PublishWithStatus(string queueName, T message, Dictionary<string, object> headers, byte priority, byte channelPriority = 255)
         {
