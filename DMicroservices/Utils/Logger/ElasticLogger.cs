@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using Serilog.Sinks.Elasticsearch;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,9 +14,11 @@ namespace DMicroservices.Utils.Logger
     {
         private static Serilog.Core.Logger _errorLogger;
         private static Serilog.Core.Logger _infoLogger;
-        private static bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG")?.ToLower() == "true";
-        private static string FileLogLocation = Environment.GetEnvironmentVariable("FILE_LOG_LOCATION");
+        private static string _fileLogLocation = Environment.GetEnvironmentVariable("FILE_LOG_LOCATION");
+        private static readonly bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG")?.ToLower() == "true";
+        private static readonly string ElasticUri = Environment.GetEnvironmentVariable("ELASTIC_URI");
 
+        private static readonly ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>> SpecificIndexFormat = new ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>>();
         public bool IsConfigured { get; set; } = false;
 
         #region Singleton Section
@@ -25,37 +28,40 @@ namespace DMicroservices.Utils.Logger
         {
             if (IsFileLog)
             {
-
-                if (string.IsNullOrWhiteSpace(FileLogLocation) || !Directory.Exists(FileLogLocation))
+                if (string.IsNullOrWhiteSpace(_fileLogLocation) || !Directory.Exists(_fileLogLocation))
                 {
-                    FileLogLocation = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                    _fileLogLocation = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
                 }
                 ConfigureFileLog();
             }
             else
             {
-                bool environmentNotCorrect = false;
-
-                string elasticUri = Environment.GetEnvironmentVariable("ELASTIC_URI");
                 string format = Environment.GetEnvironmentVariable("LOG_INDEX_FORMAT");
 
-                if (string.IsNullOrEmpty(elasticUri))
-                {
-                    Console.WriteLine("env:ELASTIC_URI is empty.");
-                    environmentNotCorrect = true;
-                }
-
-                if (string.IsNullOrEmpty(format))
-                {
-                    Console.WriteLine("env:LOG_INDEX_FORMAT is empty.");
-                    environmentNotCorrect = true;
-                }
-
-                if (!environmentNotCorrect)
-                    Configure(elasticUri, format);
+                if (!ElasticUriControl(ElasticUri, format))
+                    Configure(ElasticUri, format);
             }
         }
 
+        private static bool ElasticUriControl(string elasticUri, string format)
+        {
+            bool environmentNotCorrect = false;
+
+
+            if (string.IsNullOrEmpty(elasticUri))
+            {
+                Console.WriteLine("env:ELASTIC_URI is empty.");
+                environmentNotCorrect = true;
+            }
+
+            if (string.IsNullOrEmpty(format))
+            {
+                Console.WriteLine("env:LOG_INDEX_FORMAT is empty.");
+                environmentNotCorrect = true;
+            }
+
+            return environmentNotCorrect;
+        }
         public static ElasticLogger Instance => _instance.Value;
         #endregion
 
@@ -71,6 +77,89 @@ namespace DMicroservices.Utils.Logger
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
+        private readonly object _objectInitializeLock = new object();
+
+        private Serilog.Core.Logger GetSpecificLoggerInstance(string specificIndexFormat)
+        {
+            if (ElasticUri == null)
+            {
+                Console.WriteLine("env:ELASTIC_URI is empty. Log cannot be written");
+                return null;
+            }
+
+            if (SpecificIndexFormat.TryGetValue(specificIndexFormat, out var specificLoggerItems) && specificLoggerItems.Item1)
+            {
+                return specificLoggerItems.Item2;
+            }
+            else
+            {
+                lock (_objectInitializeLock)
+                {
+                    if (SpecificIndexFormat.TryGetValue(specificIndexFormat,
+                            out specificLoggerItems) && specificLoggerItems.Item1)
+                    {
+                        return specificLoggerItems.Item2;
+                    }
+
+                    Serilog.Core.Logger specificLoggerInstance = null;
+                    ConfigureElasticLogger(ElasticUri, specificIndexFormat, ref specificLoggerInstance);
+                    SpecificIndexFormat.TryAdd(specificIndexFormat, Tuple.Create(true, specificLoggerInstance));
+                    return specificLoggerInstance;
+                }
+            }
+        }
+
+        public void ErrorSpecificIndexFormat(Exception ex, string messageTemplate, string specificIndexFormat)
+        {
+            if (messageTemplate == null)
+                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            else
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+
+            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
+        public void ErrorSpecificIndexFormat(Exception ex, string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters)
+        {
+            if (messageTemplate == null)
+                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            else
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+
+            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+
+            foreach (var parameter in parameters)
+            {
+                stringBuilder.Append("{");
+                stringBuilder.Append(parameter.Key);
+                stringBuilder.AppendLine("}");
+            }
+
+            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, messageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
+        public void InfoSpecificIndexFormat(string messageTemplate, string specificIndexFormat)
+        {
+            if (messageTemplate == null)
+                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            else
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+
+            GetSpecificLoggerInstance($"info-{specificIndexFormat}")?.Information(messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
 #endif
         }
 
@@ -197,7 +286,7 @@ namespace DMicroservices.Utils.Logger
         {
             var loggerConfiguration = new LoggerConfiguration()
               .MinimumLevel.Verbose()
-              .WriteTo.File($"{FileLogLocation}\\logs\\{indexName}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
+              .WriteTo.File($"{_fileLogLocation}\\logs\\{indexName}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
               outputTemplate: outputTemplate);
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
