@@ -15,12 +15,16 @@ namespace DMicroservices.RabbitMq.Test
             var regList = new List<Type>()
             {
                 typeof(ExampleConsumer),
-                typeof(ExampleConsumer2),
-
-
             };
-            ConsumerRegistry.Instance.RegisterWithList(regList);
 
+            //ThreadPool.QueueUserWorkItem(delegate
+            //{
+            //    while (true)
+            //    {
+            //        BasicPublishTest();
+            //        Thread.Sleep(1);
+            //    }
+            //});
             while (true)
             {
                 string consoleInput = Console.ReadLine();
@@ -28,6 +32,9 @@ namespace DMicroservices.RabbitMq.Test
                 {
                     case "e":
                         return;
+                    case "ra":
+                        ConsumerRegistry.Instance.RegisterWithList(regList);
+                        break;
                     case "i":
                         ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer));
                         break;
@@ -43,32 +50,22 @@ namespace DMicroservices.RabbitMq.Test
                     case "un":
                         ConsumerRegistry.Instance.UnRegisterWithList(regList);
                         break;
+                    case "cq":
+                        ConsumerRegistry.Instance.ChangePrefetch(typeof(ExampleConsumer),30);
+                        break;
                 }
 
             }
-            //BasicPublishTest();
+
             //ExchangePublishTest();
         }
 
         static void BasicPublishTest()
         {
-            Debug.WriteLine("all register");
-
-
-            //Debug.WriteLine("all register");
-            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
-            //ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
-            //Console.WriteLine("ok");
-
-            //ThreadPool.QueueUserWorkItem(delegate
-            //{
-            //    RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
-            //    {
-            //        Message = "hello world."
-            //    });
-            //});
-
-            Console.ReadLine();
+            RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
+            {
+                Message = "hello world."
+            });
         }
 
         static void ExchangePublishTest()

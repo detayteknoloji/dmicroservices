@@ -190,6 +190,17 @@ namespace DMicroservices.RabbitMq.Base
         {
             return ConsumerParallelismCount;
         }
+
+        public void ChangePrefetch(Type consumerType, ushort prefetchCount)
+        {
+            foreach (var (consumerKey, consumer) in Consumers)
+            {
+                if (consumer.GetType().FullName.Equals(consumerType.FullName))
+                {
+                    consumer.ChangePrefetchCount(prefetchCount);
+                }
+            }
+        }
     }
 
     public static class ConsumerExtensions

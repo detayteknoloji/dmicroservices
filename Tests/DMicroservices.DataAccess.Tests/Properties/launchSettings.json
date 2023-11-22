@@ -7,7 +7,7 @@
         "MYSQL_RO_URI": "server=127.0.0.2,127.0.0.1;port=30052;database=xyz;user=root;password=root;Max Pool Size=200;Min Pool Size=10;Pooling=true;LoadBalance=FailOver",
         "MONGO_URI": "mongodb://root:root@127.0.0.1:13033/?maxPoolSize=150&minPoolSize=25",
         "MONGO_DB_NAME": "DMicroservices",
-        "THROW_UNIT_OF_WORK_ERROR": true,
+        "THROW_UNIT_OF_WORK_ERROR": "true",
         "ELASTIC_URI": "http://localhost:13030",
         "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}",
         "REDIS_URL": "127.0.0.1:30028,password=a-very-complex-password-here"
