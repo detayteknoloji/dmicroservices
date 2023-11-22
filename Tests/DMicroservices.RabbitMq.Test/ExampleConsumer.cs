@@ -19,7 +19,6 @@ namespace DMicroservices.RabbitMq.Test
 
             //Send Ack.
             BasicAck(e.DeliveryTag, false);
-            BasicAck(e.DeliveryTag, false);
 
         }
 

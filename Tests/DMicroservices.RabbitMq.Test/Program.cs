@@ -12,8 +12,40 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
-            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer), 2);
-            Console.ReadLine();
+            var regList = new List<Type>()
+            {
+                typeof(ExampleConsumer),
+                typeof(ExampleConsumer2),
+
+
+            };
+            ConsumerRegistry.Instance.RegisterWithList(regList);
+
+            while (true)
+            {
+                string consoleInput = Console.ReadLine();
+                switch (consoleInput)
+                {
+                    case "e":
+                        return;
+                    case "i":
+                        ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer));
+                        break;
+                    case "d":
+                        ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer));
+                        break;
+                    case "i2":
+                        ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer2));
+                        break;
+                    case "d2":
+                        ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer2));
+                        break;
+                    case "un":
+                        ConsumerRegistry.Instance.UnRegisterWithList(regList);
+                        break;
+                }
+
+            }
             //BasicPublishTest();
             //ExchangePublishTest();
         }
