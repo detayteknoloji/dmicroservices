@@ -514,6 +514,32 @@ namespace DMicroservices.RabbitMq.Producer
             return 0;
         }
 
+        /// <summary>
+        /// Kuyruğu dinleyen kaç adet consumer olduğunu döner.
+        /// </summary>
+        /// <param name="queueName">kuyruk adı</param>
+        public uint ConsumerCount(string queueName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(queueName))
+                {
+                    ElasticLogger.Instance.Error(new Exception("RabbitMQPublisher Error! QueueName was not null!"), $"QueueName: {queueName}");
+                    return 0;
+                }
+                using (IModel channel = RabbitMqConnection.Instance.GetChannel(queueName))
+                {
+                    return channel.ConsumerCount(queueName);
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.Error(ex, $"RabbitMQPublisher Error! QueueName: {queueName}");
+            }
+
+            return 0;
+        }
+
         #endregion
     }
 }
