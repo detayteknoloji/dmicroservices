@@ -6,12 +6,12 @@
 		<RepositoryUrl>https://github.com/detayteknoloji/dmicroservices</RepositoryUrl>
 		<Authors>Serhat Boyraz</Authors>
 		<Company>Detaysoft</Company>
-		<Version>8.0.2</Version>
+		<Version>8.1.0</Version>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<OutputType>Library</OutputType>
 		<IsPackable>true</IsPackable>
-		<AssemblyVersion>8.0.2.0</AssemblyVersion>
-		<FileVersion>8.0.2.0</FileVersion>
+		<AssemblyVersion>8.1.0.0</AssemblyVersion>
+		<FileVersion>8.1.0.0</FileVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -35,7 +35,7 @@
 		<PackageReference Include="RedLock.net" Version="2.3.2" />
 		<PackageReference Include="Serilog" Version="3.1.0-dev-02070" />
 		<PackageReference Include="Serilog.Sinks.ElasticSearch" Version="9.0.3" />
-
+		<PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
 		<PackageReference Include="MessagePack" Version="2.6.100-alpha" />
 		<PackageReference Include="MongoDB.Bson" Version="2.21.0" />
 		<PackageReference Include="MongoDB.Driver" Version="2.21.0" />
