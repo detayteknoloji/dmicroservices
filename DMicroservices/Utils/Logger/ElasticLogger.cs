@@ -14,6 +14,7 @@ namespace DMicroservices.Utils.Logger
         private static Serilog.Core.Logger _errorLogger;
         private static Serilog.Core.Logger _infoLogger;
         private static bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG")?.ToLower() == "true";
+        private static readonly bool IsConsoleLogForFileMode = Environment.GetEnvironmentVariable("IS_CONSOLE_LOG")?.ToLower() == "true";
         private static string FileLogLocation = Environment.GetEnvironmentVariable("FILE_LOG_LOCATION");
 
         public bool IsConfigured { get; set; } = false;
@@ -197,8 +198,11 @@ namespace DMicroservices.Utils.Logger
         {
             var loggerConfiguration = new LoggerConfiguration()
               .MinimumLevel.Verbose()
-              .WriteTo.File($"{FileLogLocation}\\logs\\{indexName}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
+              .WriteTo.File(Path.Combine(FileLogLocation, "logs", indexName + "-.txt"), fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
               outputTemplate: outputTemplate);
+
+            if (IsConsoleLogForFileMode)
+                loggerConfiguration.WriteTo.Console();
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
                 loggerConfiguration.Enrich.WithProperty("PodName", Environment.GetEnvironmentVariable("POD_NAME"));
