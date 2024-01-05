@@ -3,7 +3,8 @@
     "DMicroservices.RabbitMq.Test": {
       "commandName": "Project",
       "environmentVariables": {
-        "RABBITMQ_URI": "amqp://root:root@127.0.0.1:13034"
+        "RABBITMQ_URI": "amqp://root:root@127.0.0.1:13034",
+        "REDIS_URL": "localhost:13036"
       }
     }
   }

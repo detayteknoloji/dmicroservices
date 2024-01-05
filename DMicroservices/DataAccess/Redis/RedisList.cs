@@ -71,6 +71,7 @@ namespace DMicroservices.DataAccess.Redis
 
             GetRedisDb().KeyExpire(_key, expireTime);
         }
+
         public void AddRange(IEnumerable<T> collection, TimeSpan? expireTime = null)
         {
             GetRedisDb().ListRightPush(_key, collection.Select(x => (RedisValue)Serialize(x)).ToArray());
@@ -79,6 +80,11 @@ namespace DMicroservices.DataAccess.Redis
                 expireTime = new TimeSpan(0, 10, 0);
 
             GetRedisDb().KeyExpire(_key, expireTime);
+        }
+
+        public void AddRange(IEnumerable<T> collection)
+        {
+            GetRedisDb().ListRightPush(_key, collection.Select(x => (RedisValue)Serialize(x)).ToArray());
         }
 
         public void Clear()
