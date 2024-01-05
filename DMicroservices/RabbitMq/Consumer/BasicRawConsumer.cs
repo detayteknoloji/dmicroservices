@@ -195,5 +195,13 @@ namespace DMicroservices.RabbitMq.Consumer
              });
         }
 
+        public void ChangePrefetchCount(ushort prefetchCount)
+        {
+            PrefectCount = prefetchCount;
+            if (_rabbitMqChannel.IsOpen)
+            {
+                _rabbitMqChannel.BasicQos(0, prefetchCount, false);
+            }
+        }
     }
 }

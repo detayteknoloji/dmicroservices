@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Nest;
 
 namespace DMicroservices.RabbitMq.Consumer
 {
@@ -23,6 +24,7 @@ namespace DMicroservices.RabbitMq.Consumer
         public abstract bool AutoAck { get; }
 
         public virtual ushort PrefectCount { get; set; }
+        public ushort DynamicPrefectCount { get; set; } = 0;
 
         public virtual byte MaxPriority { get; set; } = 0;
 
@@ -72,7 +74,7 @@ namespace DMicroservices.RabbitMq.Consumer
                 _rabbitMqChannel?.Dispose();
                 _rabbitMqChannel = null;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"RabbitMqChannelShutdown Signal Error", ConstantString.RABBITMQ_INDEX_FORMAT);
 
@@ -151,8 +153,10 @@ namespace DMicroservices.RabbitMq.Consumer
                                 : RabbitMqConnection.Instance.GetChannel(ListenQueueName);
                         }
 
-                        if (PrefectCount != 0)
+                        if (PrefectCount != 0 && DynamicPrefectCount == 0)
                             _rabbitMqChannel.BasicQos(0, PrefectCount, false);
+                        else if(DynamicPrefectCount != 0)
+                            _rabbitMqChannel.BasicQos(0, DynamicPrefectCount, false);
 
                         _eventingBasicConsumer = new EventingBasicConsumer(_rabbitMqChannel);
                         _eventingBasicConsumer.Received += DocumentConsumerOnReceived;
@@ -174,6 +178,14 @@ namespace DMicroservices.RabbitMq.Consumer
                 }
                 Debug.WriteLine($"Consumer {ListenQueueName} start completed. Status: Success");
             });
+        }
+
+        public void ChangePrefetchCount(ushort prefetchCount)
+        {
+            DynamicPrefectCount = prefetchCount;
+
+            StopConsume().Wait();
+            StartConsume().Wait();
         }
 
         public Task StopConsume()
