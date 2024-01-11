@@ -113,6 +113,14 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
+        /// Önbellekte tutulan veriyi siler.
+        /// </summary>
+        /// <param name="key"></param>
+        public bool DeleteByKey(string key, int databaseNum)
+        {
+            return Connection.GetDatabase(databaseNum).KeyDelete(key);
+        }
+        /// <summary>
         /// Önbellekte tutulan verileri key benzerliğine göre siler.
         /// </summary>
         /// <param name="key"></param>
@@ -189,6 +197,19 @@ namespace DMicroservices.DataAccess.Redis
             if (expireTime > TimeSpan.MinValue)
                 return Connection.GetDatabase().StringSet(key, value, expireTime);
             return Connection.GetDatabase().StringSet(key, value);
+        }
+
+        /// <summary>
+        /// Önbellekte veriyi, verilmişse istenilen süre kadar tutar
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <param name="expireTime"></param>
+        public bool Set(string key, string value, int databaseNum, TimeSpan? expireTime = null)
+        {
+            if (expireTime > TimeSpan.MinValue)
+                return Connection.GetDatabase(databaseNum).StringSet(key, value, expireTime);
+            return Connection.GetDatabase(databaseNum).StringSet(key, value);
         }
 
         /// <summary>
@@ -409,12 +430,31 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
+        /// Önbellekte bulunan verilerin anahtar listesini getirir.
+        /// </summary>
+        /// <returns></returns>
+        public List<RedisKey> GetAllKeys(int databaseNum)
+        {
+            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(databaseNum, pattern: "*").ToList();
+        }
+
+        /// <summary>
         /// Önbellekte bulunan verilerin benzerliğine göre anahtar listesini getirir.
         /// </summary>
         /// <returns></returns>
         public List<RedisKey> GetAllKeysByLike(string key)
         {
             List<RedisKey> keys = Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
+            return keys.Where(p => p.ToString().Contains(key)).ToList();
+        }
+
+        /// <summary>
+        /// Önbellekte bulunan verilerin benzerliğine göre anahtar listesini getirir.
+        /// </summary>
+        /// <returns></returns>
+        public List<RedisKey> GetAllKeysByLike(string key, int databaseNum)
+        {
+            List<RedisKey> keys = Connection.GetServer(Connection.GetEndPoints().Last()).Keys(databaseNum, pattern: "*").ToList();
             return keys.Where(p => p.ToString().Contains(key)).ToList();
         }
 
