@@ -142,7 +142,7 @@ namespace DMicroservices.Utils.Logger
                 stringBuilder.AppendLine("}");
             }
 
-            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, messageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
+            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
@@ -160,6 +160,29 @@ namespace DMicroservices.Utils.Logger
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
+#endif
+        }
+
+        public void InfoSpecificIndexFormat(string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters)
+        {
+            if (messageTemplate == null)
+                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            else
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+
+            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+
+            foreach (var parameter in parameters)
+            {
+                stringBuilder.Append("{");
+                stringBuilder.Append(parameter.Key);
+                stringBuilder.AppendLine("}");
+            }
+
+            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nInformation : {stringBuilder}***********************************\n");
 #endif
         }
 
