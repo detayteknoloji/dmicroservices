@@ -81,6 +81,15 @@ namespace DMicroservices.DataAccess.Redis
         /// <summary>
         /// Redis önbellekte tutulan veriyi getirir.
         /// </summary>
+        /// <returns></returns>
+        public string Get(string key, int databaseNum)
+        {
+            return Connection.GetDatabase(databaseNum).StringGet(key);
+        }
+
+        /// <summary>
+        /// Redis önbellekte tutulan veriyi getirir.
+        /// </summary>
         /// <param name="key">Önbellek anahtarı</param>
         /// <returns>
         /// <list type="bullet">
@@ -93,7 +102,6 @@ namespace DMicroservices.DataAccess.Redis
             var cacheValue = Connection.GetDatabase().StringGetWithExpiry(key);
             return new Tuple<TimeSpan?, string>(cacheValue.Expiry, cacheValue.Value);
         }
-
 
         /// <summary>
         /// Önbellekte tutulan veriyi siler.
@@ -183,6 +191,47 @@ namespace DMicroservices.DataAccess.Redis
             return Connection.GetDatabase().StringSet(key, value);
         }
 
+        /// <summary>
+        /// Önbellekte veriyi, verilmişse istenilen süre kadar tutar
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <param name="expireTime"></param>
+        public bool Set(Dictionary<string, string> bulkInsertList)
+        {
+            KeyValuePair<RedisKey, RedisValue>[] redisValueArray =
+                new KeyValuePair<RedisKey, RedisValue>[bulkInsertList.Count];
+
+            int i = 0;
+            foreach (var (key, value) in bulkInsertList)
+            {
+                redisValueArray[i] = new KeyValuePair<RedisKey, RedisValue>(key, value);
+                i++;
+            }
+
+            return Connection.GetDatabase().StringSet(redisValueArray);
+        }
+
+        /// <summary>
+        /// Önbellekte veriyi, verilmişse istenilen süre kadar tutar
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <param name="expireTime"></param>
+        public bool Set(Dictionary<string, string> bulkInsertList, int databaseNum)
+        {
+            KeyValuePair<RedisKey, RedisValue>[] redisValueArray =
+                new KeyValuePair<RedisKey, RedisValue>[bulkInsertList.Count];
+
+            int i = 0;
+            foreach (var (key, value) in bulkInsertList)
+            {
+                redisValueArray[i] = new KeyValuePair<RedisKey, RedisValue>(key, value);
+                i++;
+            }
+
+            return Connection.GetDatabase(databaseNum).StringSet(redisValueArray);
+        }
         /// <summary>
         /// Önbellekte byte[] tipinde veriyi tutar.
         /// </summary>

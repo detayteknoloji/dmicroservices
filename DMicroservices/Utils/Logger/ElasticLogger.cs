@@ -179,7 +179,7 @@ namespace DMicroservices.Utils.Logger
                 stringBuilder.AppendLine("}");
             }
 
-            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+            GetSpecificLoggerInstance($"info-{specificIndexFormat}")?.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {stringBuilder}***********************************\n");
