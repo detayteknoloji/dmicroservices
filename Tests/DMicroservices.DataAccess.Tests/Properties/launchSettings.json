@@ -10,7 +10,7 @@
         "THROW_UNIT_OF_WORK_ERROR": "true",
         "ELASTIC_URI": "http://localhost:13030",
         "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}",
-        "REDIS_URL": "127.0.0.1:30028,password=a-very-complex-password-here"
+        "REDIS_URL": "127.0.0.1:13036"
       }
     }
   }
