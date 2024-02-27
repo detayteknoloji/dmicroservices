@@ -21,36 +21,17 @@ namespace DMicroservices.DataAccess.Tests
         private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
-            //Test
+          
+            //Dictionary<string, string> t = new Dictionary<string, string>();
+            //for (int i = 0; i < 5000; i++)
+            //{
+            //    t.Add($"keykeykeykeykey-{i}", $"valvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalv-{i}");
+            //}
 
-            using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
-            {
-
-                var yy = repo.GetRepository<Person>();
-
-
-                var person2 = yy.Get(x => x.Id.Equals(2));
-
-
-
-                var person = yy.Get(x => x.Id.Equals(2), person => new { person.Name, person.Id });
+            //RedisManager.Instance.Set(t);
 
 
 
-
-                var personList2 = yy.GetAll(x => x.Id.Equals(2)).ToList();
-
-
-
-                var personList = yy.SelectList(x => x.Id.Equals(2), person => new { person.Name, person.City });
-                foreach (var res in personList)
-                {
-
-                }
-
-            }
-
-            Console.ReadLine();
             //SelectDto_Test();
             //RedisManager.Instance.Exists("hi");
             //SelectDto_Test();
