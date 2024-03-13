@@ -307,9 +307,10 @@ namespace DMicroservices.Utils.Logger
 
         private void ConfigureFileLogger(string indexName, string outputTemplate, ref Serilog.Core.Logger logger)
         {
+            var combinedPath = Path.Combine(_fileLogLocation, indexName);
             var loggerConfiguration = new LoggerConfiguration()
               .MinimumLevel.Verbose()
-              .WriteTo.File($"{_fileLogLocation}\\logs\\{indexName}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
+              .WriteTo.File($"{combinedPath}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
               outputTemplate: outputTemplate);
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
