@@ -29,7 +29,7 @@ namespace DMicroservices.RabbitMq.Base
 
         public void RegisterWithList(List<Type> consumerList)
         {
-            foreach (var consumer in consumerList.Where(x => !Consumers.Values.Select(y => y.GetConsumerKey()).Contains($"{x.FullName}_0")))
+            foreach (var consumer in consumerList.Where(x => !Consumers.Values.Select(y => y.GetConsumerKey()).Contains($"{x.FullName}")))
             {
                 Register(consumer);
             }
@@ -37,23 +37,27 @@ namespace DMicroservices.RabbitMq.Base
 
         public void RegisterWithList(List<ConsumerActiveModel> consumerList)
         {
-            foreach (var i in consumerList)
+            foreach (var consumer in consumerList.Where(x => !Consumers.Values.Select(y => y.GetConsumerKey()).Contains($"{x.Type.FullName}")))
             {
-                Register(i.Type, i.ParallelismCount);
+                Register(consumer.Type, consumer.ParallelismCount);
             }
         }
 
         public void UnRegisterWithList(List<Type> consumerList, params Type[] consumerIgnores)
         {
-            foreach (var consumer in Consumers.Keys.Where(x => consumerList.Select(y => $"{y.FullName}_0").Contains(x) && !consumerIgnores.Select(y => $"{y.FullName}_0").Contains(x)))
+            foreach (var consumer in Consumers.Keys.Where(x => !consumerList.Select(y => $"{y.FullName}_0").Contains(x) && !consumerIgnores.Select(y => $"{y.FullName}_0").Contains(x)))
             {
                 UnRegister(consumer);
             }
         }
 
+        /// <summary>
+        /// Verilen consumer listesinde OLMAYAN, daha önce register yapılmış consumerleri durdurur.
+        /// </summary>
+        /// <param name="consumerList"></param>
+        /// <param name="consumerIgnores"></param>
         public void UnRegisterWithList(List<ConsumerActiveModel> consumerList, params string[] consumerIgnores)
         {
-            List<string> unRegisterKeyList = new List<string>();
             List<string> nameList = new List<string>();
             foreach (var activeConsumer in consumerList)
             {
@@ -63,12 +67,7 @@ namespace DMicroservices.RabbitMq.Base
                 }
             }
 
-            foreach (var consumer in Consumers.Keys.Where(x => nameList.Contains(x) && !consumerIgnores.Contains(x)))
-            {
-                UnRegister(consumer);
-            }
-
-            foreach (var consumer in unRegisterKeyList)
+            foreach (var consumer in Consumers.Keys.Where(x => !nameList.Contains(x) && !consumerIgnores.Contains(x)))
             {
                 UnRegister(consumer);
             }
@@ -80,6 +79,10 @@ namespace DMicroservices.RabbitMq.Base
                 throw new Exception("Consumer must be implement IConsumer.");
 
             ElasticLogger.Instance.Info($"Called to Register! {consumer.FullName}");
+
+            if (ConsumerParallelismCount.ContainsKey(consumer.FullName))
+                throw new Exception($"Called to Register has been already added {consumer.FullName}");
+
             ConsumerParallelismCount.Add(consumer.FullName, parallelismCount);
             for (int i = 0; i <= parallelismCount; i++)
             {
@@ -118,7 +121,12 @@ namespace DMicroservices.RabbitMq.Base
             lock (Consumers)
             {
                 if (Consumers.Keys.Any(p => p == consumerKey))
-                    Consumers[consumerKey].StopConsume();
+                {
+                    var consumer = Consumers[consumerKey];
+                    consumer.StopConsume();
+                    ConsumerParallelismCount.Remove(consumer.GetConsumerKey());
+                    Consumers.Remove(consumerKey);
+                }
             }
         }
 
@@ -127,6 +135,8 @@ namespace DMicroservices.RabbitMq.Base
             lock (Consumers)
             {
                 Consumers[$"{consumer.FullName}_0"].StopConsume();
+                Consumers.Remove($"{consumer.FullName}_0");
+                ConsumerParallelismCount.Remove(consumer.FullName);
             }
         }
 

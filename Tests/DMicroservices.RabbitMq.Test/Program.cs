@@ -1,4 +1,5 @@
 ﻿using DMicroservices.RabbitMq.Base;
+using DMicroservices.RabbitMq.Model;
 using DMicroservices.RabbitMq.Producer;
 using System;
 using System.Collections.Generic;
@@ -25,6 +26,13 @@ namespace DMicroservices.RabbitMq.Test
             //        Thread.Sleep(1);
             //    }
             //});
+
+            var consumerActiveSteps = new List<ConsumerActiveModel>();
+            consumerActiveSteps.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer) });
+            consumerActiveSteps.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer2) });
+            var consumerActiveSteps2 = new List<ConsumerActiveModel>();
+            consumerActiveSteps2.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer) });
+
             while (true)
             {
                 string consoleInput = Console.ReadLine();
@@ -33,7 +41,7 @@ namespace DMicroservices.RabbitMq.Test
                     case "e":
                         return;
                     case "ra":
-                        ConsumerRegistry.Instance.RegisterWithList(regList);
+                        ConsumerRegistry.Instance.RegisterWithList(consumerActiveSteps);
                         break;
                     case "i":
                         ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer));
@@ -48,10 +56,11 @@ namespace DMicroservices.RabbitMq.Test
                         ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer2));
                         break;
                     case "un":
-                        ConsumerRegistry.Instance.UnRegisterWithList(regList);
+                        //ConsumerRegistry.Instance.UnRegisterWithList(regList);
+                        ConsumerRegistry.Instance.UnRegisterWithList(consumerActiveSteps2, $"test_{0}");
                         break;
                     case "cq":
-                        ConsumerRegistry.Instance.ChangePrefetch(typeof(ExampleConsumer),30);
+                        ConsumerRegistry.Instance.ChangePrefetch(typeof(ExampleConsumer), 30);
                         break;
                 }
 
