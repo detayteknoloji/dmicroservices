@@ -202,7 +202,7 @@ namespace DMicroservices.Utils.Logger
               outputTemplate: outputTemplate);
 
             if (IsConsoleLogForFileMode)
-                loggerConfiguration.WriteTo.Console();
+                loggerConfiguration.WriteTo.Console(outputTemplate: outputTemplate);
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
                 loggerConfiguration.Enrich.WithProperty("PodName", Environment.GetEnvironmentVariable("POD_NAME"));
