@@ -21,6 +21,7 @@ namespace DMicroservices.DataAccess.Tests
         private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
+
           
             //Dictionary<string, string> t = new Dictionary<string, string>();
             //for (int i = 0; i < 5000; i++)

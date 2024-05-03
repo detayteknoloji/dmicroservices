@@ -13,11 +13,20 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
-            var regList = new List<Type>()
-            {
-                typeof(ExampleConsumer),
-            };
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
 
+            do
+            {
+                var x = Console.ReadLine();
+                RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
+                {
+                    Message = x
+                }, 10);
+
+            } while (true);
+
+            
+            Console.ReadLine();
             //ThreadPool.QueueUserWorkItem(delegate
             //{
             //    while (true)
@@ -27,44 +36,44 @@ namespace DMicroservices.RabbitMq.Test
             //    }
             //});
 
-            var consumerActiveSteps = new List<ConsumerActiveModel>();
-            consumerActiveSteps.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer) });
-            consumerActiveSteps.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer2) });
-            var consumerActiveSteps2 = new List<ConsumerActiveModel>();
-            consumerActiveSteps2.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer) });
+            //var consumerActiveSteps = new List<ConsumerActiveModel>();
+            //consumerActiveSteps.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer) });
+            //consumerActiveSteps.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer2) });
+            //var consumerActiveSteps2 = new List<ConsumerActiveModel>();
+            //consumerActiveSteps2.Add(new ConsumerActiveModel { ParallelismCount = 0, Type = typeof(ExampleConsumer) });
 
-            while (true)
-            {
-                string consoleInput = Console.ReadLine();
-                switch (consoleInput)
-                {
-                    case "e":
-                        return;
-                    case "ra":
-                        ConsumerRegistry.Instance.RegisterWithList(consumerActiveSteps);
-                        break;
-                    case "i":
-                        ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer));
-                        break;
-                    case "d":
-                        ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer));
-                        break;
-                    case "i2":
-                        ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer2));
-                        break;
-                    case "d2":
-                        ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer2));
-                        break;
-                    case "un":
-                        //ConsumerRegistry.Instance.UnRegisterWithList(regList);
-                        ConsumerRegistry.Instance.UnRegisterWithList(consumerActiveSteps2, $"test_{0}");
-                        break;
-                    case "cq":
-                        ConsumerRegistry.Instance.ChangePrefetch(typeof(ExampleConsumer), 30);
-                        break;
-                }
+            //while (true)
+            //{
+            //    string consoleInput = Console.ReadLine();
+            //    switch (consoleInput)
+            //    {
+            //        case "e":
+            //            return;
+            //        case "ra":
+            //            ConsumerRegistry.Instance.RegisterWithList(consumerActiveSteps);
+            //            break;
+            //        case "i":
+            //            ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer));
+            //            break;
+            //        case "d":
+            //            ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer));
+            //            break;
+            //        case "i2":
+            //            ConsumerRegistry.Instance.IncreaseParallelism(typeof(ExampleConsumer2));
+            //            break;
+            //        case "d2":
+            //            ConsumerRegistry.Instance.DecreaseParallelism(typeof(ExampleConsumer2));
+            //            break;
+            //        case "un":
+            //            //ConsumerRegistry.Instance.UnRegisterWithList(regList);
+            //            ConsumerRegistry.Instance.UnRegisterWithList(consumerActiveSteps2, $"test_{0}");
+            //            break;
+            //        case "cq":
+            //            ConsumerRegistry.Instance.ChangePrefetch(typeof(ExampleConsumer), 30);
+            //            break;
+            //    }
 
-            }
+            //}
 
             //ExchangePublishTest();
         }
