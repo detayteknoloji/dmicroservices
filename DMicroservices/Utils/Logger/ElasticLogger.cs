@@ -16,6 +16,7 @@ namespace DMicroservices.Utils.Logger
         private static Serilog.Core.Logger _infoLogger;
         private static string _fileLogLocation = Environment.GetEnvironmentVariable("FILE_LOG_LOCATION");
         private static readonly bool IsFileLog = Environment.GetEnvironmentVariable("IS_FILE_LOG")?.ToLower() == "true";
+        private static readonly bool IsConsoleLogForFileMode = Environment.GetEnvironmentVariable("IS_CONSOLE_LOG")?.ToLower() == "true";
         private static readonly string ElasticUri = Environment.GetEnvironmentVariable("ELASTIC_URI");
 
         private static readonly ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>> SpecificIndexFormat = new ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>>();
