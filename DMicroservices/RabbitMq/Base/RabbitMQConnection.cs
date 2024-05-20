@@ -1,8 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using DMicroservices.RabbitMq.Model;
+﻿using DMicroservices.RabbitMq.Model;
 using DMicroservices.Utils.Logger;
 using RabbitMQ.Client;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace DMicroservices.RabbitMq.Base
 {
@@ -25,7 +26,6 @@ namespace DMicroservices.RabbitMq.Base
         /// </summary>
         public RabbitMqConnection()
         {
-            GetConnection();
         }
 
         #endregion
@@ -36,7 +36,9 @@ namespace DMicroservices.RabbitMq.Base
 
         public IConnection Connection { get; set; }
 
-        public bool IsConnected => Connection is {IsOpen: true};
+        private ConcurrentDictionary<ConnectionType, IConnection> ConnectionList { get; set; } = new ConcurrentDictionary<ConnectionType, IConnection>();
+
+        public bool IsConnected => Connection is { IsOpen: true };
 
         #endregion
 
@@ -72,7 +74,7 @@ namespace DMicroservices.RabbitMq.Base
                     {
                         if (args.ReplyCode != 200)
                         {
-                            ElasticLogger.Instance.Error(new Exception($"{args}"), "RabbitMQ/ConnectionShutdown");
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(new Exception($"{args}"), "RabbitMQ/ConnectionShutdown", ConstantString.RABBITMQ_INDEX_FORMAT);
                         }
                     };
                     return Connection;
@@ -81,7 +83,50 @@ namespace DMicroservices.RabbitMq.Base
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                ElasticLogger.Instance.Error(ex, "RabbitmqConnection");
+                ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "RabbitmqConnection", ConstantString.RABBITMQ_INDEX_FORMAT);
+                return null;
+            }
+        }
+
+        public IConnection GetConnection(ConnectionType connectionType)
+        {
+            if (ConnectionList.TryGetValue(connectionType, out IConnection connectionObject) && connectionObject.IsOpen)
+                return connectionObject;
+            try
+            {
+                lock (_lockObj)
+                {
+                    string hostName = Environment.GetEnvironmentVariable("HOSTNAME");
+                    if (string.IsNullOrEmpty(hostName))
+                    {
+                        hostName = Environment.GetEnvironmentVariable("COMPUTERNAME");
+                    }
+                    if (ConnectionList.TryGetValue(connectionType, out IConnection connectionObjectInner) && connectionObjectInner.IsOpen)
+                        return connectionObjectInner;
+
+                    ConnectionFactory connectionFactory = new ConnectionFactory
+                    {
+                        Uri = new Uri(Environment.GetEnvironmentVariable("RABBITMQ_URI")),
+                        AutomaticRecoveryEnabled = false,
+                        ClientProvidedName = hostName
+                    };
+                    var connection = connectionFactory.CreateConnection();
+
+                    ConnectionList.TryAdd(connectionType, connection);
+                    connection.ConnectionShutdown += (sender, args) =>
+                    {
+                        if (args.ReplyCode != 200)
+                        {
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(new Exception($"{args}"), "RabbitMQ/ConnectionShutdown", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        }
+                    };
+                    return connection;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "RabbitmqConnection", ConstantString.RABBITMQ_INDEX_FORMAT);
                 return null;
             }
         }
@@ -92,8 +137,19 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetChannel(string queueName)
         {
-            IModel channel = GetConnection().CreateModel();
-            channel.QueueDeclare(queueName, true, false, false, null);
+            IModel channel;
+
+            try
+            {
+                channel = GetConnection().CreateModel();
+                channel.QueueDeclarePassive(queueName);
+            }
+            catch (Exception e)
+            {
+                channel = GetConnection().CreateModel();
+                channel.QueueDeclare(queueName, true, false, false, null);
+            }
+
             return channel;
         }
 
@@ -103,14 +159,24 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetChannel(string queueName, byte maxPriority)
         {
-            IModel channel = GetConnection().CreateModel();
-            channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
+            IModel channel;
+
+            try
             {
-                {"x-max-priority", maxPriority}
-            });
+                channel = GetConnection().CreateModel();
+                channel.QueueDeclarePassive(queueName);
+            }
+            catch (Exception e)
+            {
+                channel = GetConnection().CreateModel();
+                channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
+                {
+                    {"x-max-priority", maxPriority}
+                });
+            }
+
             return channel;
         }
-
         /// <summary>
         /// Exchange Channel oluşturup döner
         /// </summary>

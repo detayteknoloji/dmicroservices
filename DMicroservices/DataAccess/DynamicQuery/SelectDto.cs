@@ -390,7 +390,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
                             filterValue = GetConstanstValue(filterProp.Type, propertyValueItem);
 
                             if (filterExpression != null)
-                                filterExpression = Expression.Or(filterExpression, Expression.Equal(filterProp, filterValue));
+                                filterExpression = Expression.OrElse(filterExpression, Expression.Equal(filterProp, filterValue));
                             else
                                 filterExpression = Expression.Equal(filterProp, filterValue);
                         }

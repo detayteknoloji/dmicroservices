@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using DMicroservices.DataAccess.Repository;
@@ -18,24 +19,19 @@ namespace DMicroservices.DataAccess.Tests
 {
     class Program
     {
+        private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
 
-            using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
-            {
-                var yy = repo.GetRepository<Person>();
+          
+            //Dictionary<string, string> t = new Dictionary<string, string>();
+            //for (int i = 0; i < 5000; i++)
+            //{
+            //    t.Add($"keykeykeykeykey-{i}", $"valvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalv-{i}");
+            //}
 
+            //RedisManager.Instance.Set(t);
 
-                var person2  = yy.Get(x => x.Id.Equals(2));
-
-
-
-                var person = yy.Get(x => x.Id.Equals(2), person => new {person.Name, person.Id});
-
-
-
-
-                var personList2 = yy.GetAll(x => x.Id.Equals(2)).ToList();
 
 
                 
