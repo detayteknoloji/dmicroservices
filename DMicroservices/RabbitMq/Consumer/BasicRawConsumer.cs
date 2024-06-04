@@ -3,6 +3,7 @@ using DMicroservices.RabbitMq.Model;
 using DMicroservices.Utils.Logger;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using System;
 using System.Diagnostics;
 using System.Text;
@@ -162,9 +163,22 @@ namespace DMicroservices.RabbitMq.Consumer
                             }
                         };
                     }
+                    catch (RabbitMQClientException connectionException)
+                    {
+                        if (!ConsumerListening)
+                        {
+                            Task.Run(RabbitMqChannelShutdown);
+                        }
+                        ElasticLogger.Instance.ErrorSpecificIndexFormat(connectionException, $"RabbitMQ Connection Exception! Queue: {ListenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                    }
                     catch (Exception ex)
                     {
-                        ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "RabbitMQ/RabbitmqConsumer", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        //try connect if not connected.
+                        if (!ConsumerListening)
+                        {
+                            Task.Run(RabbitMqChannelShutdown);
+                        }
+                        ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"RabbitMQ/RabbitmqConsumer Error! Queue: {ListenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
                 }
                 Debug.WriteLine($"Consumer {ListenQueueName} start completed. Status: Success");

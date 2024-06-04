@@ -4,6 +4,7 @@ using RabbitMQ.Client;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using DMicroservices.Utils.Exceptions;
 
 namespace DMicroservices.RabbitMq.Base
 {
@@ -84,7 +85,7 @@ namespace DMicroservices.RabbitMq.Base
             {
                 Console.WriteLine(ex.Message);
                 ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "RabbitmqConnection", ConstantString.RABBITMQ_INDEX_FORMAT);
-                return null;
+                throw;
             }
         }
 
@@ -138,15 +139,15 @@ namespace DMicroservices.RabbitMq.Base
         public IModel GetChannel(string queueName)
         {
             IModel channel;
-
+            IConnection connection = GetConnection();
             try
             {
-                channel = GetConnection().CreateModel();
+                channel = connection.CreateModel();
                 channel.QueueDeclarePassive(queueName);
             }
-            catch (Exception e)
+            catch
             {
-                channel = GetConnection().CreateModel();
+                channel = connection.CreateModel();
                 channel.QueueDeclare(queueName, true, false, false, null);
             }
 
@@ -161,14 +162,16 @@ namespace DMicroservices.RabbitMq.Base
         {
             IModel channel;
 
+            IConnection connection = GetConnection();
+
             try
             {
-                channel = GetConnection().CreateModel();
+                channel = connection.CreateModel();
                 channel.QueueDeclarePassive(queueName);
             }
-            catch (Exception e)
+            catch
             {
-                channel = GetConnection().CreateModel();
+                channel = connection.CreateModel();
                 channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
                 {
                     {"x-max-priority", maxPriority}
@@ -183,7 +186,8 @@ namespace DMicroservices.RabbitMq.Base
         /// <returns></returns>
         public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName)
         {
-            IModel channel = GetConnection().CreateModel();
+            IConnection connection = GetConnection();
+            IModel channel = connection.CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
             channel.QueueDeclare(queueName, true, false, false);
             channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
