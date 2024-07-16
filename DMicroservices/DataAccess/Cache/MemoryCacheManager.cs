@@ -15,7 +15,7 @@ namespace DMicroservices.DataAccess.Cache
     public class MemoryCacheManager
     {
         private IMemoryCache _memoryCache;
-
+        private bool _memoryCacheDisabled = false;
         #region Singleton Section
 
         private static readonly Lazy<MemoryCacheManager> _instance = new Lazy<MemoryCacheManager>(() => new MemoryCacheManager());
@@ -39,6 +39,8 @@ namespace DMicroservices.DataAccess.Cache
         /// <returns></returns>
         public string Get(string key)
         {
+            if (_memoryCacheDisabled)
+                return null;
             return _memoryCache.Get(key)?.ToString();
         }
 
@@ -48,6 +50,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public bool DeleteByKey(string key)
         {
+            if (_memoryCacheDisabled)
+                return true;
+
             _memoryCache.Remove(key);
             return true;
         }
@@ -58,6 +63,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public bool DeleteByKeyLike(string key)
         {
+
+            if (_memoryCacheDisabled)
+                return true;
 
             foreach (var keyItem in GetAllKeys())
             {
@@ -73,6 +81,9 @@ namespace DMicroservices.DataAccess.Cache
         /// </summary>
         public bool Clear()
         {
+            if (_memoryCacheDisabled)
+                return true;
+
             foreach (var key in GetAllKeys())
             {
                 _memoryCache.Remove(key);
@@ -89,6 +100,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="expireTime"></param>
         public bool Set(string key, string value, TimeSpan? expireTime = null)
         {
+            if (_memoryCacheDisabled)
+                return true;
+
             if (expireTime.HasValue)
                 _memoryCache.Set(key, value, expireTime.Value);
             else
@@ -105,6 +119,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="expireTime"></param>
         public bool Set(Dictionary<string, string> bulkInsertList)
         {
+            if (_memoryCacheDisabled)
+                return true;
+
             foreach (var (key, value) in bulkInsertList)
             {
                 _memoryCache.Set(key, value);
@@ -120,6 +137,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="value"></param>
         public bool SetSerializeBytes<T>(string key, T value, TimeSpan? expireTime = null)
         {
+            if (_memoryCacheDisabled)
+                return true;
+
             if (expireTime.HasValue)
                 _memoryCache.Set(key, value, expireTime.Value);
             else
@@ -135,6 +155,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public T GetDeserializeBytes<T>(string key)
         {
+            if (_memoryCacheDisabled)
+                return default;
+
             return _memoryCache.Get<T>(key);
         }
 
@@ -144,6 +167,9 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public bool Exists(string key)
         {
+            if (_memoryCacheDisabled)
+                return false;
+
             return _memoryCache.Get(key) != null;
         }
 
@@ -153,6 +179,12 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public bool GetIfExists(string key, out string obj)
         {
+            if (_memoryCacheDisabled)
+            {
+                obj = null;
+                return false;
+            }
+
             obj = _memoryCache.Get(key)?.ToString();
             return obj != null;
         }
@@ -163,6 +195,12 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public bool GetIfExists<T>(string key, out T obj) where T : class
         {
+            if (_memoryCacheDisabled)
+            {
+                obj = null;
+                return false;
+            }
+
             var memoryCacheData = _memoryCache.Get(key);
 
             obj = (T)memoryCacheData;
@@ -171,6 +209,11 @@ namespace DMicroservices.DataAccess.Cache
 
         public List<string> GetAllKeys()
         {
+            if (_memoryCacheDisabled)
+            {
+                return null;
+            }
+
             var field = typeof(MemoryCache).GetProperty("EntriesCollection", BindingFlags.NonPublic | BindingFlags.Instance);
             var collection = field.GetValue(_memoryCache) as ICollection;
             var items = new List<string>();
@@ -183,6 +226,15 @@ namespace DMicroservices.DataAccess.Cache
                 }
 
             return items;
+        }
+
+        public void DisableCache()
+        {
+            _memoryCacheDisabled = false;
+        }
+        public void EnableCache()
+        {
+            _memoryCacheDisabled = true;
         }
     }
 }
