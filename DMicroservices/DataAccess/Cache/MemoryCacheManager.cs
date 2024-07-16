@@ -230,11 +230,11 @@ namespace DMicroservices.DataAccess.Cache
 
         public void DisableCache()
         {
-            _memoryCacheDisabled = false;
+            _memoryCacheDisabled = true;
         }
         public void EnableCache()
         {
-            _memoryCacheDisabled = true;
+            _memoryCacheDisabled = false;
         }
     }
 }
