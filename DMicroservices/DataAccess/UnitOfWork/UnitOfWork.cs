@@ -314,6 +314,10 @@ namespace DMicroservices.DataAccess.UnitOfWork
             return historyCollection;
         }
 
+        public DbContext GetDbContext()
+        {
+            return DbContext;
+        }
         #endregion
 
         #region IDisposable Members
@@ -322,6 +326,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
         {
             DbContext = null;
         }
+
         #endregion
     }
 
@@ -626,6 +631,10 @@ namespace DMicroservices.DataAccess.UnitOfWork
             return historyCollection;
         }
 
+        public DbContext GetDbContext()
+        {
+            return DbContext;
+        }
         #endregion
 
         #region IDisposable Members
@@ -635,6 +644,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
             DbContext = null;
         }
         #endregion
+
     }
 
 }
