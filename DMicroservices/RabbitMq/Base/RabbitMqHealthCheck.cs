@@ -18,11 +18,23 @@ namespace DMicroservices.RabbitMq.Base
         {
             if (!RabbitMqConnection.Instance.IsConnected)
             {
-                var rabbitConnection = RabbitMqConnection.Instance.GetConnection();
+                RabbitMQ.Client.IConnection rabbitConnection = null;
+                var tryConnectionTask = new Task(() => {
+                    try
+                    {
+                        rabbitConnection = RabbitMqConnection.Instance.GetConnection();
+                    }
+                    catch
+                    {
+                        //ignored
+                    }
+                });
+                tryConnectionTask.Start();
+                tryConnectionTask.Wait(TimeSpan.FromSeconds(1));
                 if (rabbitConnection == null || !rabbitConnection.IsOpen)
                 {
                     ElasticLogger.Instance.Info($"RabbitMQ Connection Lost");
-                    return Task.FromResult(HealthCheckResult.Unhealthy());
+                    return Task.FromResult(HealthCheckResult.Unhealthy("RabbitMQ Connection Lost"));
                 }
                 else
                 {

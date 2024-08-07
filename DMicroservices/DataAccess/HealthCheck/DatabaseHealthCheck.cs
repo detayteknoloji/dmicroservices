@@ -26,7 +26,7 @@ namespace DMicroservices.RabbitMq.Base
             catch (Exception e)
             {
                 ElasticLogger.Instance.Error(e, $"Mysql Connection Lost");
-                return Task.FromResult(HealthCheckResult.Unhealthy());
+                return Task.FromResult(HealthCheckResult.Unhealthy("Mysql Connection Lost"));
 
             }
 
