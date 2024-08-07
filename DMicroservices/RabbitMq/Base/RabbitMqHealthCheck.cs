@@ -14,12 +14,16 @@ namespace DMicroservices.RabbitMq.Base
         {
             _afterConnectionAction = afterConnectionAction;
         }
+        public RabbitMqHealthCheck()
+        {
+        }
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             if (!RabbitMqConnection.Instance.IsConnected)
             {
                 RabbitMQ.Client.IConnection rabbitConnection = null;
-                var tryConnectionTask = new Task(() => {
+                var tryConnectionTask = new Task(() =>
+                {
                     try
                     {
                         rabbitConnection = RabbitMqConnection.Instance.GetConnection();
@@ -38,7 +42,7 @@ namespace DMicroservices.RabbitMq.Base
                 }
                 else
                 {
-                    if(_afterConnectionAction != null)
+                    if (_afterConnectionAction != null)
                         _afterConnectionAction.Invoke("Called /IsReady Method");
                 }
             }
