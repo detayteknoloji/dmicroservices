@@ -136,7 +136,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName)
+        public IModel GetChannel(string queueName, bool durable = true)
         {
             IModel channel;
             IConnection connection = GetConnection();
@@ -148,7 +148,7 @@ namespace DMicroservices.RabbitMq.Base
             catch
             {
                 channel = connection.CreateModel();
-                channel.QueueDeclare(queueName, true, false, false, null);
+                channel.QueueDeclare(queueName, durable, false, false, null);
             }
 
             return channel;
@@ -158,7 +158,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName, byte maxPriority)
+        public IModel GetChannel(string queueName, byte maxPriority, bool durable = true)
         {
             IModel channel;
 
@@ -172,7 +172,7 @@ namespace DMicroservices.RabbitMq.Base
             catch
             {
                 channel = connection.CreateModel();
-                channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
+                channel.QueueDeclare(queueName, durable, false, false, new Dictionary<string, object>()
                 {
                     {"x-max-priority", maxPriority}
                 });
@@ -184,12 +184,12 @@ namespace DMicroservices.RabbitMq.Base
         /// Exchange Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName)
+        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName, bool durable)
         {
             IConnection connection = GetConnection();
             IModel channel = connection.CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
-            channel.QueueDeclare(queueName, true, false, false);
+            channel.QueueDeclare(queueName, durable, false, false);
             channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
             return channel;
         }

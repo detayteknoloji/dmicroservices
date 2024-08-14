@@ -12,6 +12,8 @@ namespace DMicroservices.RabbitMq.Test
         public override bool AutoAck => false;
         public override ushort PrefectCount { get => 10; }
 
+        public override bool Durable => false;
+
         public override Action<ExampleModel, BasicDeliverEventArgs> DataReceivedAction => DataReceived;
 
         private void DataReceived(ExampleModel model, BasicDeliverEventArgs e)

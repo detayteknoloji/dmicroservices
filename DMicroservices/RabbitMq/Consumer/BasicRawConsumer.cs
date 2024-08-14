@@ -25,6 +25,7 @@ namespace DMicroservices.RabbitMq.Consumer
         public virtual ushort PrefectCount { get; set; }
 
         public virtual byte MaxPriority { get; set; } = 0;
+        public virtual bool Durable { get; set; } = true;
 
         public virtual ExchangeContent ExchangeContent { get; set; }
 
@@ -138,19 +139,26 @@ namespace DMicroservices.RabbitMq.Consumer
                                 string.IsNullOrEmpty(ExchangeContent.ExchangeType))
                                 throw new Exception("ExchangeContent contains null object(s)!");
                             _rabbitMqChannel =
-                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName);
+                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName, Durable);
                         }
                         else
                         {
                             _rabbitMqChannel = MaxPriority > 0
-                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority)
-                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName);
+                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority, Durable)
+                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName, Durable);
                         }
 
                         if (PrefectCount != 0)
                             _rabbitMqChannel.BasicQos(0, PrefectCount, false);
 
                         _eventingBasicConsumer = new EventingBasicConsumer(_rabbitMqChannel);
+                        _eventingBasicConsumer.ConsumerCancelled += (sender, args) =>
+                        {
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(
+                                   new Exception($"{args} Queue: {ListenQueueName}"), "RabbitMQ/ModelShutdown",
+                                   ConstantString.RABBITMQ_INDEX_FORMAT);
+                            Task.Run(RabbitMqChannelShutdown);
+                        };
                         _eventingBasicConsumer.Received += DocumentConsumerOnReceived;
                         _rabbitMqChannel.BasicConsume(ListenQueueName, AutoAck, _eventingBasicConsumer);
                         ConsumerListening = true;
