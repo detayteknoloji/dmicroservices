@@ -26,6 +26,7 @@ namespace DMicroservices.RabbitMq.Consumer
 
         public virtual byte MaxPriority { get; set; } = 0;
         public virtual bool Durable { get; set; } = true;
+        public virtual bool AutoDelete { get; set; } = false;
 
         public virtual ExchangeContent ExchangeContent { get; set; }
 
@@ -139,13 +140,13 @@ namespace DMicroservices.RabbitMq.Consumer
                                 string.IsNullOrEmpty(ExchangeContent.ExchangeType))
                                 throw new Exception("ExchangeContent contains null object(s)!");
                             _rabbitMqChannel =
-                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName, Durable);
+                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName, Durable, AutoDelete);
                         }
                         else
                         {
                             _rabbitMqChannel = MaxPriority > 0
-                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority, Durable)
-                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName, Durable);
+                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority, Durable, AutoDelete)
+                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName, Durable, AutoDelete);
                         }
 
                         if (PrefectCount != 0)

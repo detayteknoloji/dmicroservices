@@ -136,7 +136,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName, bool durable = true)
+        public IModel GetChannel(string queueName, bool durable = true, bool autoDelete = false)
         {
             IModel channel;
             IConnection connection = GetConnection();
@@ -148,7 +148,7 @@ namespace DMicroservices.RabbitMq.Base
             catch
             {
                 channel = connection.CreateModel();
-                channel.QueueDeclare(queueName, durable, false, false, null);
+                channel.QueueDeclare(queueName, durable, false, autoDelete, null);
             }
 
             return channel;
@@ -158,7 +158,7 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName, byte maxPriority, bool durable = true)
+        public IModel GetChannel(string queueName, byte maxPriority, bool durable = true, bool autoDelete = false)
         {
             IModel channel;
 
@@ -172,7 +172,7 @@ namespace DMicroservices.RabbitMq.Base
             catch
             {
                 channel = connection.CreateModel();
-                channel.QueueDeclare(queueName, durable, false, false, new Dictionary<string, object>()
+                channel.QueueDeclare(queueName, durable, false, autoDelete, new Dictionary<string, object>()
                 {
                     {"x-max-priority", maxPriority}
                 });
@@ -184,12 +184,12 @@ namespace DMicroservices.RabbitMq.Base
         /// Exchange Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName, bool durable)
+        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName, bool durable, bool autoDelete = false)
         {
             IConnection connection = GetConnection();
             IModel channel = connection.CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
-            channel.QueueDeclare(queueName, durable, false, false);
+            channel.QueueDeclare(queueName, durable, false, autoDelete);
             channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
             return channel;
         }
