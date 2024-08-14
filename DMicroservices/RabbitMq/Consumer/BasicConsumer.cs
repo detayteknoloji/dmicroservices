@@ -163,6 +163,15 @@ namespace DMicroservices.RabbitMq.Consumer
 
                         _eventingBasicConsumer = new EventingBasicConsumer(_rabbitMqChannel);
                         _eventingBasicConsumer.Received += DocumentConsumerOnReceived;
+                        
+                        _eventingBasicConsumer.ConsumerCancelled += (sender, args) =>
+                        {
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(
+                                   new Exception($"{args} Queue: {ListenQueueName}"), "RabbitMQ/ModelShutdown",
+                                   ConstantString.RABBITMQ_INDEX_FORMAT);
+                            Task.Run(RabbitMqChannelShutdown);
+                        };
+
                         _rabbitMqChannel.BasicConsume(ListenQueueName, AutoAck, _eventingBasicConsumer);
                         _rabbitMqChannel.ModelShutdown += (sender, args) =>
                         {
@@ -174,6 +183,7 @@ namespace DMicroservices.RabbitMq.Consumer
                                 Task.Run(RabbitMqChannelShutdown);
                             }
                         };
+
                         ConsumerListening = true;
                     }
                     catch (RabbitMQClientException connectionException)
