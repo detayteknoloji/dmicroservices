@@ -260,5 +260,10 @@ namespace DMicroservices.DataAccess.Repository
         {
             throw new NotImplementedException();
         }
+
+        public int SendSqlScalar(string sqlQuery)
+        {
+            return DbContext.Database.ExecuteSqlRaw(sqlQuery);
+        }
     }
 }

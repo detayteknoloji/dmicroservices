@@ -194,5 +194,12 @@ namespace DMicroservices.DataAccess.Repository
         {
             throw new NotImplementedException("This repository is read-only.");
         }
+
+
+
+        public int SendSqlScalar(string sqlQuery)
+        {
+            throw new NotImplementedException("This repository is read-only.");
+        }
     }
 }

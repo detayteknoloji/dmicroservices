@@ -21,8 +21,13 @@ namespace DMicroservices.DataAccess.Tests
         private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
+            using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
+            {
+                int affectedRows = uow.GetRepository<City>().SendSqlScalar("update City set Name='sb' where Id=1");
 
-          
+                uow.SaveChanges();
+            }
+
             //Dictionary<string, string> t = new Dictionary<string, string>();
             //for (int i = 0; i < 5000; i++)
             //{
