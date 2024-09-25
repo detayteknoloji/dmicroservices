@@ -61,7 +61,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
                             {
                                 mysqlUri = _unitOfWorkSettings.ConnectionUri;
                             }
-                            propertyInfo.SetValue( dbContext, mysqlUri);
+                            propertyInfo.SetValue(dbContext, mysqlUri);
                         }
                     }
 
@@ -197,32 +197,15 @@ namespace DMicroservices.DataAccess.UnitOfWork
                         }
                 }
             }
-            catch (ValidationException ex)
-            {
-                string errorString = ex.Message;
-                ErrorMessageList.Add(errorString);
-                if (throwAnError)
-                    throw;
-            }
-            catch (DbUpdateException ex)
-            {
-                string errorString = ex.Message;
-                if (ex.InnerException != null)
-                {
-                    errorString += ex.InnerException.Message;
-                    if (ex.InnerException.InnerException != null)
-                    {
-                        errorString += ex.InnerException.InnerException.Message;
-                    }
-                }
-
-                ErrorMessageList.Add(errorString);
-                if (throwAnError)
-                    throw;
-            }
             catch (Exception ex)
             {
-                ErrorMessageList.Add(ex.Message);
+                var exception = ex;
+                do
+                {
+                    ErrorMessageList.Add(exception.Message);
+                    exception = exception?.InnerException;
+                } while (exception != null);
+
                 if (throwAnError)
                     throw;
             }
@@ -314,6 +297,10 @@ namespace DMicroservices.DataAccess.UnitOfWork
             return historyCollection;
         }
 
+        public DbContext GetDbContext()
+        {
+            return DbContext;
+        }
         #endregion
 
         #region IDisposable Members
@@ -322,6 +309,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
         {
             DbContext = null;
         }
+
         #endregion
     }
 
@@ -509,32 +497,15 @@ namespace DMicroservices.DataAccess.UnitOfWork
                         }
                 }
             }
-            catch (ValidationException ex)
-            {
-                string errorString = ex.Message;
-                ErrorMessageList.Add(errorString);
-                if (throwAnError)
-                    throw;
-            }
-            catch (DbUpdateException ex)
-            {
-                string errorString = ex.Message;
-                if (ex.InnerException != null)
-                {
-                    errorString += ex.InnerException.Message;
-                    if (ex.InnerException.InnerException != null)
-                    {
-                        errorString += ex.InnerException.InnerException.Message;
-                    }
-                }
-
-                ErrorMessageList.Add(errorString);
-                if (throwAnError)
-                    throw;
-            }
             catch (Exception ex)
             {
-                ErrorMessageList.Add(ex.Message);
+                var exception = ex;
+                do
+                {
+                    ErrorMessageList.Add(exception.Message);
+                    exception = exception?.InnerException;
+                } while (exception != null);
+
                 if (throwAnError)
                     throw;
             }
@@ -626,6 +597,10 @@ namespace DMicroservices.DataAccess.UnitOfWork
             return historyCollection;
         }
 
+        public DbContext GetDbContext()
+        {
+            return DbContext;
+        }
         #endregion
 
         #region IDisposable Members
@@ -635,6 +610,7 @@ namespace DMicroservices.DataAccess.UnitOfWork
             DbContext = null;
         }
         #endregion
+
     }
 
 }

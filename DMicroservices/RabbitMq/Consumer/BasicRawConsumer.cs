@@ -3,6 +3,7 @@ using DMicroservices.RabbitMq.Model;
 using DMicroservices.Utils.Logger;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using System;
 using System.Diagnostics;
 using System.Text;
@@ -24,6 +25,8 @@ namespace DMicroservices.RabbitMq.Consumer
         public virtual ushort PrefectCount { get; set; }
 
         public virtual byte MaxPriority { get; set; } = 0;
+        public virtual bool Durable { get; set; } = true;
+        public virtual bool AutoDelete { get; set; } = false;
 
         public virtual ExchangeContent ExchangeContent { get; set; }
 
@@ -137,19 +140,26 @@ namespace DMicroservices.RabbitMq.Consumer
                                 string.IsNullOrEmpty(ExchangeContent.ExchangeType))
                                 throw new Exception("ExchangeContent contains null object(s)!");
                             _rabbitMqChannel =
-                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName);
+                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName, Durable, AutoDelete);
                         }
                         else
                         {
                             _rabbitMqChannel = MaxPriority > 0
-                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority)
-                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName);
+                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority, Durable, AutoDelete)
+                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName, Durable, AutoDelete);
                         }
 
                         if (PrefectCount != 0)
                             _rabbitMqChannel.BasicQos(0, PrefectCount, false);
 
                         _eventingBasicConsumer = new EventingBasicConsumer(_rabbitMqChannel);
+                        _eventingBasicConsumer.ConsumerCancelled += (sender, args) =>
+                        {
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(
+                                   new Exception($"{args} Queue: {ListenQueueName}"), "RabbitMQ/ModelShutdown",
+                                   ConstantString.RABBITMQ_INDEX_FORMAT);
+                            Task.Run(RabbitMqChannelShutdown);
+                        };
                         _eventingBasicConsumer.Received += DocumentConsumerOnReceived;
                         _rabbitMqChannel.BasicConsume(ListenQueueName, AutoAck, _eventingBasicConsumer);
                         ConsumerListening = true;
@@ -162,9 +172,22 @@ namespace DMicroservices.RabbitMq.Consumer
                             }
                         };
                     }
+                    catch (RabbitMQClientException connectionException)
+                    {
+                        if (!ConsumerListening)
+                        {
+                            Task.Run(RabbitMqChannelShutdown);
+                        }
+                        ElasticLogger.Instance.ErrorSpecificIndexFormat(connectionException, $"RabbitMQ Connection Exception! Queue: {ListenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                    }
                     catch (Exception ex)
                     {
-                        ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "RabbitMQ/RabbitmqConsumer", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        //try connect if not connected.
+                        if (!ConsumerListening)
+                        {
+                            Task.Run(RabbitMqChannelShutdown);
+                        }
+                        ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"RabbitMQ/RabbitmqConsumer Error! Queue: {ListenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
                 }
                 Debug.WriteLine($"Consumer {ListenQueueName} start completed. Status: Success");
