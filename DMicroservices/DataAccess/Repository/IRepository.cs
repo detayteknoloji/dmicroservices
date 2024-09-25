@@ -88,6 +88,13 @@ namespace DMicroservices.DataAccess.Repository
         List<T> SendSql(string sqlQuery);
 
         /// <summary>
+        /// Execute sql query. Return affected rows.
+        /// </summary>
+        /// <param name="sqlQuery"></param>
+        /// <returns></returns>
+        int SendSqlScalar(string sqlQuery);
+
+        /// <summary>
         /// Verilen entityi ekle.
         /// </summary>
         /// <param name="entity"></param>
