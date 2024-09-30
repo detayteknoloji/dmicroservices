@@ -21,36 +21,23 @@ namespace DMicroservices.DataAccess.Tests
         private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
-            //Test
-
-            using (var repo = UnitOfWorkFactory.CreateUnitOfWork<MasterContext>())
+            using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
             {
+                int affectedRows = uow.GetRepository<City>().SendSqlScalar("update City set Name='sb' where Id=1");
 
-                var yy = repo.GetRepository<Person>();
-
-
-                var person2 = yy.Get(x => x.Id.Equals(2));
-
-
-
-                var person = yy.Get(x => x.Id.Equals(2), person => new { person.Name, person.Id });
-
-
-
-
-                var personList2 = yy.GetAll(x => x.Id.Equals(2)).ToList();
-
-
-
-                var personList = yy.SelectList(x => x.Id.Equals(2), person => new { person.Name, person.City });
-                foreach (var res in personList)
-                {
-
-                }
-
+                uow.SaveChanges();
             }
 
-            Console.ReadLine();
+            //Dictionary<string, string> t = new Dictionary<string, string>();
+            //for (int i = 0; i < 5000; i++)
+            //{
+            //    t.Add($"keykeykeykeykey-{i}", $"valvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalvalv-{i}");
+            //}
+
+            //RedisManager.Instance.Set(t);
+
+
+
             //SelectDto_Test();
             //RedisManager.Instance.Exists("hi");
             //SelectDto_Test();

@@ -215,6 +215,11 @@ namespace DMicroservices.DataAccess.MongoRepository
             return (int)CurrentCollection.Find(predicate).CountDocuments();
         }
 
+        public bool Exists(Expression<Func<T, bool>> predicate)
+        {
+            return CurrentCollection.Find(predicate).Limit(1).Any();
+        }
+
         public IQueryable<T> GetAll(Expression<Func<T, bool>> predicate)
         {
             return CurrentCollection.Find(predicate).ToEnumerable().AsQueryable();

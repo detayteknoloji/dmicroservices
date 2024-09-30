@@ -97,7 +97,7 @@ namespace DMicroservices.RabbitMq.Producer
             return false;
         }
 
-        public bool PublishWithStatus(string queueName, T message, byte priority, byte channelPriority = 255)
+        public bool PublishWithStatus(string queueName, T message, byte priority, byte channelPriority = 10)
         {
             try
             {
@@ -307,7 +307,7 @@ namespace DMicroservices.RabbitMq.Producer
         /// <param name="message">mesaj</param>
         /// <param name="headers"></param>
         /// <param name="priority"></param>
-        public bool PublishWithStatus(string queueName, T message, Dictionary<string, object> headers, byte priority, byte channelPriority = 255)
+        public bool PublishWithStatus(string queueName, T message, Dictionary<string, object> headers, byte priority, byte channelPriority = 10)
         {
             try
             {
@@ -343,7 +343,7 @@ namespace DMicroservices.RabbitMq.Producer
         /// <param name="message">mesaj</param>
         /// <param name="headers"></param>
         /// <param name="priority"></param>
-        public bool Publish(string queueName, T message, Dictionary<string, object> headers, byte priority, byte channelPriority = 255)
+        public bool Publish(string queueName, T message, Dictionary<string, object> headers, byte priority, byte channelPriority = 10)
         {
             try
             {
@@ -378,7 +378,7 @@ namespace DMicroservices.RabbitMq.Producer
         /// <param name="message">mesaj</param>
         /// <param name="headers"></param>
         /// <param name="priority"></param>
-        public void Publish(string queueName, T message, byte priority, byte channelPriority = 255)
+        public void Publish(string queueName, T message, byte priority, byte channelPriority = 10)
         {
             try
             {

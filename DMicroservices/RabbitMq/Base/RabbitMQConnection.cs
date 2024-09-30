@@ -4,6 +4,7 @@ using RabbitMQ.Client;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using DMicroservices.Utils.Exceptions;
 
 namespace DMicroservices.RabbitMq.Base
 {
@@ -84,7 +85,7 @@ namespace DMicroservices.RabbitMq.Base
             {
                 Console.WriteLine(ex.Message);
                 ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "RabbitmqConnection", ConstantString.RABBITMQ_INDEX_FORMAT);
-                return null;
+                throw;
             }
         }
 
@@ -135,10 +136,21 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName)
+        public IModel GetChannel(string queueName, bool durable = true, bool autoDelete = false)
         {
-            IModel channel = GetConnection().CreateModel();
-            channel.QueueDeclare(queueName, true, false, false, null);
+            IModel channel;
+            IConnection connection = GetConnection();
+            try
+            {
+                channel = connection.CreateModel();
+                channel.QueueDeclarePassive(queueName);
+            }
+            catch
+            {
+                channel = connection.CreateModel();
+                channel.QueueDeclare(queueName, durable, false, autoDelete, null);
+            }
+
             return channel;
         }
 
@@ -146,24 +158,38 @@ namespace DMicroservices.RabbitMq.Base
         /// Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetChannel(string queueName, byte maxPriority)
+        public IModel GetChannel(string queueName, byte maxPriority, bool durable = true, bool autoDelete = false)
         {
-            IModel channel = GetConnection().CreateModel();
-            channel.QueueDeclare(queueName, true, false, false, new Dictionary<string, object>()
+            IModel channel;
+
+            IConnection connection = GetConnection();
+
+            try
             {
-                {"x-max-priority", maxPriority}
-            });
+                channel = connection.CreateModel();
+                channel.QueueDeclarePassive(queueName);
+            }
+            catch
+            {
+                channel = connection.CreateModel();
+                channel.QueueDeclare(queueName, durable, false, autoDelete, new Dictionary<string, object>()
+                {
+                    {"x-max-priority", maxPriority}
+                });
+            }
+
             return channel;
         }
         /// <summary>
         /// Exchange Channel oluşturup döner
         /// </summary>
         /// <returns></returns>
-        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName)
+        public IModel GetExchangeChannel(ExchangeContent exchangeContent, string queueName, bool durable, bool autoDelete = false)
         {
-            IModel channel = GetConnection().CreateModel();
+            IConnection connection = GetConnection();
+            IModel channel = connection.CreateModel();
             channel.ExchangeDeclare(exchangeContent.ExchangeName, exchangeContent.ExchangeType);
-            channel.QueueDeclare(queueName, true, false, false);
+            channel.QueueDeclare(queueName, durable, false, autoDelete);
             channel.QueueBind(queueName, exchangeContent.ExchangeName, exchangeContent.RoutingKey, exchangeContent.Headers);
             return channel;
         }

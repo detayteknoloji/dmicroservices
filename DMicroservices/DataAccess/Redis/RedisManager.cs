@@ -270,12 +270,10 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public T GetDeserializeBytes<T>(string key)
         {
-            if (Exists(key))
-            {
-                RedisValue redisValue = Connection.GetDatabase().StringGet(key);
-                if (redisValue != RedisValue.Null && redisValue.HasValue)
-                    return Deserialize<T>(redisValue);
-            }
+
+            RedisValue redisValue = Connection.GetDatabase().StringGet(key);
+            if (redisValue != RedisValue.Null && redisValue.HasValue)
+                return Deserialize<T>(redisValue);
 
             return default(T);
         }
@@ -292,12 +290,10 @@ namespace DMicroservices.DataAccess.Redis
         /// </returns>
         public Tuple<TimeSpan?, T> GetDeserializeBytesWithExpiry<T>(string key)
         {
-            if (Exists(key))
-            {
-                RedisValueWithExpiry redisValue = Connection.GetDatabase().StringGetWithExpiry(key);
-                if (redisValue.Value != RedisValue.Null && redisValue.Value.HasValue)
-                    return new Tuple<TimeSpan?, T>(redisValue.Expiry, Deserialize<T>(redisValue.Value));
-            }
+
+            RedisValueWithExpiry redisValue = Connection.GetDatabase().StringGetWithExpiry(key);
+            if (redisValue.Value != RedisValue.Null && redisValue.Value.HasValue)
+                return new Tuple<TimeSpan?, T>(redisValue.Expiry, Deserialize<T>(redisValue.Value));
 
             return default(Tuple<TimeSpan?, T>);
         }
@@ -308,8 +304,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public bool Exists(string key)
         {
-            List<RedisKey> keys = GetAllKeys();
-            return keys.Contains(key);
+            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: key).Any();
         }
 
         /// <summary>
@@ -318,13 +313,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public bool GetIfExists(string key, out string obj)
         {
-            obj = null;
-
-            if (this.Exists(key))
-            {
-                obj = this.Connection.GetDatabase().StringGet(key);
-            }
-
+            obj = this.Connection.GetDatabase().StringGet(key);
             return (obj != null);
         }
 
@@ -334,21 +323,14 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public bool GetIfExists<T>(string key, out T obj) where T : class
         {
-            obj = null;
-
-            if (this.Exists(key))
+            obj = this.GetDeserializeBytes<T>(key);
+            if (obj == null)
             {
-                obj = this.GetDeserializeBytes<T>(key);
-                if (obj == null)
-                {
-                    this.DeleteByKey(key);
-                    return false;
-                }
-
-                return true;
+                this.DeleteByKey(key);
+                return false;
             }
 
-            return false;
+            return true;
         }
 
         /// <summary>
@@ -359,21 +341,14 @@ namespace DMicroservices.DataAccess.Redis
         /// <see cref="Tuple{T1,T2}.Item2"/>: Önbellekte tutulan veri.</param>
         public bool GetIfExistsWithExpiry<T>(string key, out Tuple<TimeSpan?, T> obj) where T : class
         {
-            obj = null;
-
-            if (this.Exists(key))
+            obj = this.GetDeserializeBytesWithExpiry<T>(key);
+            if (obj == null)
             {
-                obj = this.GetDeserializeBytesWithExpiry<T>(key);
-                if (obj == null)
-                {
-                    this.DeleteByKey(key);
-                    return false;
-                }
-
-                return true;
+                this.DeleteByKey(key);
+                return false;
             }
 
-            return false;
+            return true;
         }
 
         /// <summary>
@@ -382,21 +357,14 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public bool GetIfExistsObj(string key, out object obj)
         {
-            obj = null;
-
-            if (this.Exists(key))
+            obj = this.Get(key);
+            if (obj == null)
             {
-                obj = this.Get(key);
-                if (obj == null)
-                {
-                    this.DeleteByKey(key);
-                    return false;
-                }
-
-                return true;
+                this.DeleteByKey(key);
+                return false;
             }
 
-            return false;
+            return true;
         }
 
         /// <summary>
@@ -446,6 +414,15 @@ namespace DMicroservices.DataAccess.Redis
         {
             List<RedisKey> keys = Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
             return keys.Where(p => p.ToString().Contains(key)).ToList();
+        }
+
+        /// <summary>
+        /// Önbellekte bulunan verilerin benzerliğine göre anahtar listesini getirir.
+        /// </summary>
+        /// <returns></returns>
+        public List<RedisKey> GetAllKeysByLikeOld(string key)
+        {
+            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: $"*{key}*").ToList();
         }
 
         /// <summary>
