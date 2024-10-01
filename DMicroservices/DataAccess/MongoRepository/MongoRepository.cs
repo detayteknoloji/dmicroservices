@@ -1,6 +1,7 @@
 ﻿using DMicroservices.DataAccess.DynamicQuery.Enum;
 using DMicroservices.DataAccess.MongoRepository.Interfaces;
 using DMicroservices.DataAccess.MongoRepository.Settings;
+using DMicroservices.Utils.Logger;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using DMicroservices.Utils.Logger;
 
 namespace DMicroservices.DataAccess.MongoRepository
 {
@@ -158,11 +158,13 @@ namespace DMicroservices.DataAccess.MongoRepository
             }
             catch (Exception ex)
             {
+                IfThrowError(ex);
                 string messageTemplate = $"Mongo adding error on :{typeof(T).Name}";
                 ElasticLogger.Instance.Error(ex, messageTemplate);
                 return false;
             }
         }
+
 
         public bool Delete(Expression<Func<T, bool>> predicate, bool forceDelete = false)
         {
@@ -173,6 +175,7 @@ namespace DMicroservices.DataAccess.MongoRepository
             }
             catch (Exception ex)
             {
+                IfThrowError(ex);
                 string messageTemplate = $"Mongo deleting error on :{typeof(T).Name}";
                 ElasticLogger.Instance.Error(ex, messageTemplate);
                 return false;
@@ -189,6 +192,7 @@ namespace DMicroservices.DataAccess.MongoRepository
             }
             catch (Exception ex)
             {
+                IfThrowError(ex);
                 string messageTemplate = $"Mongo delete many error on :{typeof(T).Name}";
                 ElasticLogger.Instance.Error(ex, messageTemplate);
                 return false;
@@ -204,6 +208,7 @@ namespace DMicroservices.DataAccess.MongoRepository
             }
             catch (Exception ex)
             {
+                IfThrowError(ex);
                 string messageTemplate = $"Mongo upate many error on :{typeof(T).Name}";
                 ElasticLogger.Instance.Error(ex, messageTemplate);
                 return false;
@@ -351,5 +356,15 @@ namespace DMicroservices.DataAccess.MongoRepository
             return false;
         }
 
+        private void IfThrowError(Exception e)
+        {
+            bool throwAnError =
+               !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THROW_MONGO_ERROR"))
+                   ? bool.Parse(Environment.GetEnvironmentVariable("THROW_MONGO_ERROR"))
+                   : false;
+
+            if (throwAnError)
+                throw e;
+        }
     }
 }
