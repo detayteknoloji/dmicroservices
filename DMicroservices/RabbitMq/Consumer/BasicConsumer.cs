@@ -72,7 +72,6 @@ namespace DMicroservices.RabbitMq.Consumer
             }
 
             _listenQueueName = listenQueueAttribute.ListenQueue;
-
         }
 
 
@@ -251,5 +250,9 @@ namespace DMicroservices.RabbitMq.Consumer
              });
         }
 
+        public string GetListenQueueName()
+        {
+            return _listenQueueName;
+        }
     }
 }
