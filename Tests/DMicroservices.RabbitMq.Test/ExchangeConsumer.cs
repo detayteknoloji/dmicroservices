@@ -3,12 +3,13 @@ using DMicroservices.RabbitMq.Model;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using System;
+using DMicroservices.RabbitMq.Base;
 
 namespace DMicroservices.RabbitMq.Test
 {
+    [ListenQueue("ExampleQueue")]
     class ExchangeConsumer : BasicConsumer<ExampleModel>
     {
-        public override string ListenQueueName => "ExampleQueue";
 
         public override ExchangeContent ExchangeContent => new ExchangeContent() { ExchangeName = "ExampleExchange", ExchangeType = ExchangeType.Fanout };
 
