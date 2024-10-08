@@ -10,5 +10,16 @@ namespace DMicroservices.RabbitMq.Base
         {
             ListenQueue = listenQueue;
         }
+        public ListenQueueAttribute(string listenQueue, bool addHostnameEnvironment)
+        {
+            if (addHostnameEnvironment)
+            {
+                ListenQueue = listenQueue + Environment.GetEnvironmentVariable("HOSTNAME");
+            }
+            else
+            {
+                ListenQueue = listenQueue;
+            }
+        }
     }
 }
