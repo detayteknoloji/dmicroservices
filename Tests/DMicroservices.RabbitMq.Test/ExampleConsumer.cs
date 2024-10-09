@@ -6,6 +6,7 @@ using RabbitMQ.Client.Events;
 
 namespace DMicroservices.RabbitMq.Test  
 {
+    [ListenQueue(typeof(Test), "QueueName")]
     class ExampleConsumer : BasicConsumer<ExampleModel>
     {
         public override bool AutoAck => false;
@@ -26,5 +27,10 @@ namespace DMicroservices.RabbitMq.Test
 
         }
 
+    }
+
+    public class Test
+    {
+        public static string QueueName => "test";
     }
 }
