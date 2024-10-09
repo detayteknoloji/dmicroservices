@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Threading;
+using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Consumer;
 using RabbitMQ.Client.Events;
 
 namespace DMicroservices.RabbitMq.Test  
 {
+    [ListenQueue(typeof(Test), "QueueName")]
     class ExampleConsumer : BasicConsumer<ExampleModel>
     {
-        public override string ListenQueueName => "ExampleQueue";
-
         public override bool AutoAck => false;
         public override ushort PrefectCount { get => 10; }
 
@@ -27,5 +27,10 @@ namespace DMicroservices.RabbitMq.Test
 
         }
 
+    }
+
+    public class Test
+    {
+        public static string QueueName => "test";
     }
 }

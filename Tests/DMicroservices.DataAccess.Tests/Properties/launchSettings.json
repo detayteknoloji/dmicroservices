@@ -12,7 +12,8 @@
         "IS_CONSOLE_LOG": "true",
         "ELASTIC_URI": "http://localhost:13030",
         "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}",
-        "REDIS_URL": "127.0.0.1:13036"
+        "REDIS_URL": "127.0.0.1:13036",
+        "THROW_MONGO_ERROR": "false"
       }
     }
   }

@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Threading;
+using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Consumer;
 using RabbitMQ.Client.Events;
 
 namespace DMicroservices.RabbitMq.Test
 {
+    [ListenQueue("ExampleQueue2")]
     class ExampleConsumer2 : BasicConsumer<ExampleModel>
     {
-        public override string ListenQueueName => "ExampleQueue2";
 
         public override bool AutoAck => false;
 

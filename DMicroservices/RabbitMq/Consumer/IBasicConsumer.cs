@@ -5,7 +5,6 @@ namespace DMicroservices.RabbitMq.Consumer
 {
     public interface IConsumer 
     {
-        string ListenQueueName { get;}
 
         bool AutoAck { get; }
 
@@ -16,5 +15,6 @@ namespace DMicroservices.RabbitMq.Consumer
         Task StopConsume();
 
         void ChangePrefetchCount(ushort prefetchCount);
+        string GetListenQueueName();
     }
 }

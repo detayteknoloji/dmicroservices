@@ -6,6 +6,7 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace DMicroservices.RabbitMq.Consumer
     /// <typeparam name="T"></typeparam>
     public abstract class BasicRawConsumer : IConsumer
     {
-        public abstract string ListenQueueName { get; }
+        private string _listenQueueName;
 
         public abstract bool AutoAck { get; }
 
@@ -60,7 +61,13 @@ namespace DMicroservices.RabbitMq.Consumer
 
         protected BasicRawConsumer()
         {
+            var listenQueueAttribute = GetType().GetCustomAttribute<ListenQueueAttribute>();
+            if (listenQueueAttribute == null || string.IsNullOrEmpty(listenQueueAttribute.ListenQueue))
+            {
+                throw new Exception($"{GetType().FullName} sınıfı için ListenQueue attibute zorunludur");
+            }
 
+            _listenQueueName = listenQueueAttribute.ListenQueue;
         }
 
 
@@ -116,19 +123,19 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             return Task.Run(() =>
             {
-                Debug.WriteLine($"Consumer {ListenQueueName} start requested. Status: New");
+                Debug.WriteLine($"Consumer {_listenQueueName} start requested. Status: New");
                 lock (_stateChangeLockObject)
                 {
-                    Debug.WriteLine($"Consumer {ListenQueueName} start process started. Status: Pending");
+                    Debug.WriteLine($"Consumer {_listenQueueName} start process started. Status: Pending");
                     if (ConsumerListening)
                     {
-                        Debug.WriteLine($"Consumer {ListenQueueName} start process started. Status: Already Listening");
+                        Debug.WriteLine($"Consumer {_listenQueueName} start process started. Status: Already Listening");
                         return;
                     }
 
                     try
                     {
-                        if (string.IsNullOrEmpty(ListenQueueName))
+                        if (string.IsNullOrEmpty(_listenQueueName))
                         {
                             ElasticLogger.Instance.InfoSpecificIndexFormat("Consumer QueueName was null", ConstantString.RABBITMQ_INDEX_FORMAT);
                         }
@@ -140,13 +147,13 @@ namespace DMicroservices.RabbitMq.Consumer
                                 string.IsNullOrEmpty(ExchangeContent.ExchangeType))
                                 throw new Exception("ExchangeContent contains null object(s)!");
                             _rabbitMqChannel =
-                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, ListenQueueName, Durable, AutoDelete);
+                                RabbitMqConnection.Instance.GetExchangeChannel(ExchangeContent, _listenQueueName, Durable, AutoDelete);
                         }
                         else
                         {
                             _rabbitMqChannel = MaxPriority > 0
-                                ? RabbitMqConnection.Instance.GetChannel(ListenQueueName, MaxPriority, Durable, AutoDelete)
-                                : RabbitMqConnection.Instance.GetChannel(ListenQueueName, Durable, AutoDelete);
+                                ? RabbitMqConnection.Instance.GetChannel(_listenQueueName, MaxPriority, Durable, AutoDelete)
+                                : RabbitMqConnection.Instance.GetChannel(_listenQueueName, Durable, AutoDelete);
                         }
 
                         if (PrefectCount != 0)
@@ -156,18 +163,18 @@ namespace DMicroservices.RabbitMq.Consumer
                         _eventingBasicConsumer.ConsumerCancelled += (sender, args) =>
                         {
                             ElasticLogger.Instance.ErrorSpecificIndexFormat(
-                                   new Exception($"{args} Queue: {ListenQueueName}"), "RabbitMQ/ModelShutdown",
+                                   new Exception($"{args} Queue: {_listenQueueName}"), "RabbitMQ/ModelShutdown",
                                    ConstantString.RABBITMQ_INDEX_FORMAT);
                             Task.Run(RabbitMqChannelShutdown);
                         };
                         _eventingBasicConsumer.Received += DocumentConsumerOnReceived;
-                        _rabbitMqChannel.BasicConsume(ListenQueueName, AutoAck, _eventingBasicConsumer);
+                        _rabbitMqChannel.BasicConsume(_listenQueueName, AutoAck, _eventingBasicConsumer);
                         ConsumerListening = true;
                         _rabbitMqChannel.ModelShutdown += (sender, args) =>
                         {
                             if (args.ReplyCode != 200)
                             {
-                                ElasticLogger.Instance.ErrorSpecificIndexFormat(new Exception($"{args} Queue: {ListenQueueName}"), "RabbitMQ/ModelShutdown", ConstantString.RABBITMQ_INDEX_FORMAT);
+                                ElasticLogger.Instance.ErrorSpecificIndexFormat(new Exception($"{args} Queue: {_listenQueueName}"), "RabbitMQ/ModelShutdown", ConstantString.RABBITMQ_INDEX_FORMAT);
                                 Task.Run(RabbitMqChannelShutdown);
                             }
                         };
@@ -178,7 +185,7 @@ namespace DMicroservices.RabbitMq.Consumer
                         {
                             Task.Run(RabbitMqChannelShutdown);
                         }
-                        ElasticLogger.Instance.ErrorSpecificIndexFormat(connectionException, $"RabbitMQ Connection Exception! Queue: {ListenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        ElasticLogger.Instance.ErrorSpecificIndexFormat(connectionException, $"RabbitMQ Connection Exception! Queue: {_listenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
                     catch (Exception ex)
                     {
@@ -187,10 +194,10 @@ namespace DMicroservices.RabbitMq.Consumer
                         {
                             Task.Run(RabbitMqChannelShutdown);
                         }
-                        ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"RabbitMQ/RabbitmqConsumer Error! Queue: {ListenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"RabbitMQ/RabbitmqConsumer Error! Queue: {_listenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
                 }
-                Debug.WriteLine($"Consumer {ListenQueueName} start completed. Status: Success");
+                Debug.WriteLine($"Consumer {_listenQueueName} start completed. Status: Success");
             });
         }
 
@@ -198,10 +205,10 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             return Task.Run(() =>
              {
-                 Debug.WriteLine($"Consumer {ListenQueueName} stop requested.");
+                 Debug.WriteLine($"Consumer {_listenQueueName} stop requested.");
                  lock (_stateChangeLockObject)
                  {
-                     Debug.WriteLine($"Consumer {ListenQueueName} stop process started.");
+                     Debug.WriteLine($"Consumer {_listenQueueName} stop process started.");
                      if (!ConsumerListening)
                          return;
 
@@ -213,7 +220,7 @@ namespace DMicroservices.RabbitMq.Consumer
                      _rabbitMqChannel?.Dispose();
                      _rabbitMqChannel = null;
                      ConsumerListening = false;
-                     Debug.WriteLine($"Consumer {ListenQueueName} stop completed.");
+                     Debug.WriteLine($"Consumer {_listenQueueName} stop completed.");
                  }
              });
         }
@@ -225,6 +232,11 @@ namespace DMicroservices.RabbitMq.Consumer
             {
                 _rabbitMqChannel.BasicQos(0, prefetchCount, false);
             }
+        }
+
+        public string GetListenQueueName()
+        {
+            return _listenQueueName;
         }
     }
 }
