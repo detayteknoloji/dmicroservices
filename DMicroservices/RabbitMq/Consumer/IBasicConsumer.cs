@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DMicroservices.RabbitMq.Consumer
 {
@@ -16,5 +17,8 @@ namespace DMicroservices.RabbitMq.Consumer
 
         void ChangePrefetchCount(ushort prefetchCount);
         string GetListenQueueName();
+
+        IServiceScopeFactory ScopeFactory { get; set; }
+        IServiceProvider ServiceProvider { get; set; }
     }
 }

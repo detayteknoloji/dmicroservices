@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DMicroservices.RabbitMq.Consumer
 {
@@ -96,6 +97,9 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
         {
+            using var scope = ScopeFactory.CreateScope();
+
+            ServiceProvider = scope.ServiceProvider;
             var rawData = Encoding.UTF8.GetString(e.Body.ToArray());
             try
             {
@@ -238,5 +242,9 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             return _listenQueueName;
         }
+
+        public IServiceScopeFactory ScopeFactory { get; set; }
+        public IServiceProvider ServiceProvider { get; set; }
+        public IServiceProvider ServiceProvider2 { get; set; }
     }
 }

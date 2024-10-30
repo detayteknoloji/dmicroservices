@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Nest;
 using RabbitMQ.Client.Exceptions;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DMicroservices.RabbitMq.Consumer
 {
@@ -37,16 +38,7 @@ namespace DMicroservices.RabbitMq.Consumer
 
         public virtual Action<T, BasicDeliverEventArgs> DataReceivedAction { get; }
 
-        private bool _consumerListening = false;
-
-        public bool ConsumerListening
-        {
-            get => _consumerListening;
-            set
-            {
-                _consumerListening = value;
-            }
-        }
+        public bool ConsumerListening { get; set; } = false;
 
         /// <summary>
         /// Modeli dinlemek için kullanıclan event
@@ -62,7 +54,6 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private readonly object _stateChangeLockObject = new object();
 
-
         protected BasicConsumer()
         {
             var listenQueueAttribute = GetType().GetCustomAttribute<ListenQueueAttribute>();
@@ -73,6 +64,7 @@ namespace DMicroservices.RabbitMq.Consumer
 
             _listenQueueName = listenQueueAttribute.ListenQueue;
         }
+
 
 
         private void RabbitMqChannelShutdown()
@@ -104,6 +96,8 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
         {
+            using var scope = ScopeFactory.CreateScope();
+            ServiceProvider = scope.ServiceProvider;
             string jsonData = null;
             try
             {
@@ -254,5 +248,8 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             return _listenQueueName;
         }
+
+        public IServiceScopeFactory ScopeFactory { get; set; }
+        public IServiceProvider ServiceProvider { get; set; }
     }
 }

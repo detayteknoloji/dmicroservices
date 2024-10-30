@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Consumer;
+using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client.Events;
 
 namespace DMicroservices.RabbitMq.Test

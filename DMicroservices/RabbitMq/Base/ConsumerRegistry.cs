@@ -6,26 +6,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DMicroservices.RabbitMq.Base
 {
-    public class ConsumerRegistry
+    public class ConsumerRegistry(IServiceScopeFactory serviceScopeFactory, IServiceProvider serviceProvider)
     {
-        private Dictionary<string, IConsumer> Consumers { get; set; }
-        private Dictionary<string, int> ConsumerParallelismCount { get; set; }
-
-        #region Singleton Section
-        private static readonly Lazy<ConsumerRegistry> _instance = new Lazy<ConsumerRegistry>(() => new ConsumerRegistry());
-
-        private ConsumerRegistry()
-        {
-            Consumers = new Dictionary<string, IConsumer>();
-            ConsumerParallelismCount = new Dictionary<string, int>();
-        }
-
-        public static ConsumerRegistry Instance => _instance.Value;
-        #endregion
-
+        private Dictionary<string, IConsumer> Consumers { get; set; } = new Dictionary<string, IConsumer>();
+        private Dictionary<string, int> ConsumerParallelismCount { get; set; } = new Dictionary<string, int>();
 
         public void RegisterWithList(List<Type> consumerList)
         {
@@ -105,7 +93,10 @@ namespace DMicroservices.RabbitMq.Base
             if (Consumers.All(keyValue => keyValue.Key != consumerKey))
             {
                 var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
+                if (consumerObject == null)
+                    throw new Exception($"Consumer not generated. Consumer name : {consumer.FullName}");
 
+                consumerObject.ScopeFactory = serviceScopeFactory;
                 lock (Consumers)
                 {
                     ElasticLogger.Instance.Info("Consumer register new request with: " + consumerKey);

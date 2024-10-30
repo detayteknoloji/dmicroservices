@@ -4,13 +4,13 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using System;
 using DMicroservices.RabbitMq.Base;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DMicroservices.RabbitMq.Test
 {
-    [ListenQueue("ExampleQueue")]
+    [ListenQueue("ExchangeConsume2")]
     class ExchangeConsumer : BasicConsumer<ExampleModel>
     {
-
         public override ExchangeContent ExchangeContent => new ExchangeContent() { ExchangeName = "ExampleExchange", ExchangeType = ExchangeType.Fanout };
 
         public override bool AutoAck => false;
