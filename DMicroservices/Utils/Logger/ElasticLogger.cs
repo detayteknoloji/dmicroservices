@@ -70,8 +70,9 @@ namespace DMicroservices.Utils.Logger
             if (messageTemplate == null)
                 messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
             else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name} ";
 
+            SetStacktraceExceptionSource(ex);
             if (IsConfigured)
                 _errorLogger.Error(ex, messageTemplate);
 
@@ -118,7 +119,7 @@ namespace DMicroservices.Utils.Logger
                 messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
             else
                 messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-
+            SetStacktraceExceptionSource(ex);
             GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, messageTemplate);
 
 #if DEBUG
@@ -141,7 +142,7 @@ namespace DMicroservices.Utils.Logger
                 stringBuilder.Append(parameter.Key);
                 stringBuilder.AppendLine("}");
             }
-
+            SetStacktraceExceptionSource(ex);
             GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
@@ -194,7 +195,7 @@ namespace DMicroservices.Utils.Logger
                 messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
 
             messageTemplate += " by Company Id :{@CompanyNo}";
-
+            SetStacktraceExceptionSource(ex);
             if (IsConfigured)
                 _errorLogger.Error(ex, messageTemplate, companyNo);
 
@@ -211,7 +212,7 @@ namespace DMicroservices.Utils.Logger
                 messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
 
             messageTemplate += " with Track object : {@trackObject}";
-
+            SetStacktraceExceptionSource(ex);
             if (IsConfigured)
                 _errorLogger.Error(ex, messageTemplate, Convert.ToString(trackObject));
 
@@ -342,6 +343,12 @@ namespace DMicroservices.Utils.Logger
                 loggerConfiguration.Enrich.WithProperty("PodId", Environment.GetEnvironmentVariable("HOSTNAME"));
 
             logger = loggerConfiguration.CreateLogger();
+        }
+
+        private void SetStacktraceExceptionSource(Exception ex)
+        {
+            ex.Source = string.IsNullOrEmpty(ex.Source) ? Environment.StackTrace : ex.Source + "---------StackTrace---------" + Environment.StackTrace;
+            ex.Source = ex.Source.Replace("at System.Environment.get_StackTrace()" + Environment.NewLine, string.Empty);
         }
     }
 }
