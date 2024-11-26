@@ -15,16 +15,7 @@ namespace DMicroservices.RabbitMq.Test
         {
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
 
-            do
-            {
-                var x = Console.ReadLine();
-                RabbitMqPublisher<ExampleModel>.Instance.Publish("ExampleQueue", new ExampleModel()
-                {
-                    Message = x
-                }, 10);
-
-            } while (true);
-
+          
             
             Console.ReadLine();
             //ThreadPool.QueueUserWorkItem(delegate

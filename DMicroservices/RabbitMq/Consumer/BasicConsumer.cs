@@ -57,10 +57,12 @@ namespace DMicroservices.RabbitMq.Consumer
         /// bu consumer tekrar initialize edilebilir mi?
         /// </summary>
         private bool _dontReinitialize = false;
+        private bool _isShutdowning = false;
 
         private IModel _rabbitMqChannel;
 
         private readonly object _stateChangeLockObject = new object();
+        private readonly object _shutdownChangeLockObject = new object();
 
 
         protected BasicConsumer()
@@ -77,29 +79,36 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private void RabbitMqChannelShutdown()
         {
-            ElasticLogger.Instance.InfoSpecificIndexFormat($"Only RabbitMqChannelShutdown Signal", ConstantString.RABBITMQ_INDEX_FORMAT);
-
-            try
-            {
-                if (_eventingBasicConsumer is { IsRunning: true })
-                    _eventingBasicConsumer.OnCancel(_eventingBasicConsumer.ConsumerTags);
-                _rabbitMqChannel?.Dispose();
-                _rabbitMqChannel = null;
-            }
-            catch (Exception e)
-            {
-                ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"RabbitMqChannelShutdown Signal Error", ConstantString.RABBITMQ_INDEX_FORMAT);
-
-                //ignored
-            }
-
-            Thread.Sleep(TimeSpan.FromSeconds(10));
-
-            ConsumerListening = false;
-            if (_dontReinitialize)
+            if (_isShutdowning)
                 return;
+            lock (_shutdownChangeLockObject)
+            {
+                _isShutdowning = true;
+                ElasticLogger.Instance.InfoSpecificIndexFormat($"Only RabbitMqChannelShutdown Signal", ConstantString.RABBITMQ_INDEX_FORMAT);
 
-            StartConsume();
+                try
+                {
+                    if (_eventingBasicConsumer is { IsRunning: true })
+                        _eventingBasicConsumer.OnCancel(_eventingBasicConsumer.ConsumerTags);
+                    _rabbitMqChannel?.Dispose();
+                    _rabbitMqChannel = null;
+                }
+                catch (Exception e)
+                {
+                    ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"RabbitMqChannelShutdown Signal Error", ConstantString.RABBITMQ_INDEX_FORMAT);
+
+                    //ignored
+                }
+
+                Thread.Sleep(TimeSpan.FromSeconds(10));
+
+                ConsumerListening = false;
+                if (_dontReinitialize)
+                    return;
+
+                StartConsume();
+                _isShutdowning = false;
+            }
         }
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
@@ -114,13 +123,15 @@ namespace DMicroservices.RabbitMq.Consumer
             catch (Exception ex)
             {
                 ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"DocumentConsumer generic data received exception: {ex.Message}, ConsumerTag {e?.ConsumerTag}", ConstantString.RABBITMQ_INDEX_FORMAT, new System.Collections.Generic.Dictionary<string, object>() { { "Data:", jsonData } });
-                _rabbitMqChannel.BasicNack(e.DeliveryTag, false, false);
+                if (_rabbitMqChannel != null)
+                    _rabbitMqChannel.BasicNack(e.DeliveryTag, false, false);
             }
         }
 
         protected void BasicAck(ulong deliveryTag, bool multiple)
         {
-            _rabbitMqChannel.BasicAck(deliveryTag, multiple);
+            if (_rabbitMqChannel != null)
+                _rabbitMqChannel.BasicAck(deliveryTag, multiple);
         }
 
         protected EventingBasicConsumer GetCurrentConsumer()
@@ -179,7 +190,7 @@ namespace DMicroservices.RabbitMq.Consumer
                             ElasticLogger.Instance.ErrorSpecificIndexFormat(
                                    new Exception($"{args} Queue: {_listenQueueName}"), "RabbitMQ/ModelShutdown",
                                    ConstantString.RABBITMQ_INDEX_FORMAT);
-                            Task.Run(RabbitMqChannelShutdown);
+                            Task.Run(() => { RabbitMqChannelShutdown(); });
                         };
 
                         _rabbitMqChannel.BasicConsume(_listenQueueName, AutoAck, _eventingBasicConsumer);
@@ -190,7 +201,7 @@ namespace DMicroservices.RabbitMq.Consumer
                                 ElasticLogger.Instance.ErrorSpecificIndexFormat(
                                     new Exception($"{args} Queue: {_listenQueueName}"), "RabbitMQ/ModelShutdown",
                                     ConstantString.RABBITMQ_INDEX_FORMAT);
-                                Task.Run(RabbitMqChannelShutdown);
+                                Task.Run(() => { RabbitMqChannelShutdown(); });
                             }
                         };
 
@@ -200,7 +211,7 @@ namespace DMicroservices.RabbitMq.Consumer
                     {
                         if (!ConsumerListening)
                         {
-                            Task.Run(RabbitMqChannelShutdown);
+                            Task.Run(() => { RabbitMqChannelShutdown(); });
                         }
                         ElasticLogger.Instance.ErrorSpecificIndexFormat(connectionException, $"RabbitMQ Connection Exception! Queue: {_listenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
@@ -209,7 +220,7 @@ namespace DMicroservices.RabbitMq.Consumer
                         //try connect if not connected.
                         if (!ConsumerListening)
                         {
-                            Task.Run(RabbitMqChannelShutdown);
+                            Task.Run(() => { RabbitMqChannelShutdown(); });
                         }
                         ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"RabbitMQ/RabbitmqConsumer Error! Queue: {_listenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
@@ -229,25 +240,25 @@ namespace DMicroservices.RabbitMq.Consumer
         public Task StopConsume()
         {
             return Task.Run(() =>
-             {
-                 Debug.WriteLine($"Consumer {_listenQueueName} stop requested.");
-                 lock (_stateChangeLockObject)
-                 {
-                     Debug.WriteLine($"Consumer {_listenQueueName} stop process started.");
-                     if (!ConsumerListening)
-                         return;
+            {
+                Debug.WriteLine($"Consumer {_listenQueueName} stop requested.");
+                lock (_stateChangeLockObject)
+                {
+                    Debug.WriteLine($"Consumer {_listenQueueName} stop process started.");
+                    if (!ConsumerListening)
+                        return;
 
-                     _dontReinitialize = true;
+                    _dontReinitialize = true;
 
-                     _eventingBasicConsumer.Received -= DocumentConsumerOnReceived;
-                     Thread.Sleep(TimeSpan.FromSeconds(15));
-                     _eventingBasicConsumer.OnCancel(_eventingBasicConsumer.ConsumerTags);
-                     _rabbitMqChannel?.Dispose();
-                     _rabbitMqChannel = null;
-                     ConsumerListening = false;
-                     Debug.WriteLine($"Consumer {_listenQueueName} stop completed.");
-                 }
-             });
+                    _eventingBasicConsumer.Received -= DocumentConsumerOnReceived;
+                    Thread.Sleep(TimeSpan.FromSeconds(15));
+                    _eventingBasicConsumer.OnCancel(_eventingBasicConsumer.ConsumerTags);
+                    _rabbitMqChannel?.Dispose();
+                    _rabbitMqChannel = null;
+                    ConsumerListening = false;
+                    Debug.WriteLine($"Consumer {_listenQueueName} stop completed.");
+                }
+            });
         }
 
         public string GetListenQueueName()
