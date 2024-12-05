@@ -120,7 +120,7 @@ namespace DMicroservices.Utils.Logger
         public void ErrorSpecificIndexFormatInFile(Exception ex, string messageTemplate, string specificIndexFormat, string logFilePath)
         {
             messageTemplate = CreateMessageTemplate(messageTemplate);
-            GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath)?.Error(ex, messageTemplate);
+            GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath, true)?.Error(ex, messageTemplate);
 
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
@@ -133,18 +133,18 @@ namespace DMicroservices.Utils.Logger
 
             string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
 
-            GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath)?.Error(ex, parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
+            GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath, true)?.Error(ex, parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
         }
 
-        public void InfoSpecificIndexFormatInFile(string messageTemplate, string specificIndexFormat, string logFilePath)
+        public void InfoSpecificIndexFormatInFile(string messageTemplate, string fileName, string logFilePath)
         {
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
-            GetSpecificLoggerFileInstance($"info-{specificIndexFormat}", logFilePath)?.Information(messageTemplate);
+            GetSpecificLoggerFileInstance($"info-{fileName}", logFilePath, false)?.Information(messageTemplate);
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
@@ -157,7 +157,7 @@ namespace DMicroservices.Utils.Logger
 
             string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
 
-            GetSpecificLoggerFileInstance($"info-{specificIndexFormat}", logFilePath)?.Information(parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
+            GetSpecificLoggerFileInstance($"info-{specificIndexFormat}", logFilePath, false)?.Information(parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {parameterMessageTemplate}***********************************\n");
@@ -338,7 +338,7 @@ namespace DMicroservices.Utils.Logger
                 additionalFilePath = _fileLogLocation;
             }
 
-            var combinedPath = Path.Combine(additionalFilePath, indexName);
+            var combinedPath = Path.Combine(additionalFilePath, "logs", indexName);
             var loggerConfiguration = new LoggerConfiguration()
               .MinimumLevel.Verbose()
               .WriteTo.File($"{combinedPath}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
@@ -380,15 +380,9 @@ namespace DMicroservices.Utils.Logger
             ex.Source = string.IsNullOrEmpty(ex.Source) ? Environment.StackTrace : ex.Source + "---------StackTrace---------" + Environment.StackTrace;
             ex.Source = ex.Source.Replace("at System.Environment.get_StackTrace()" + Environment.NewLine, string.Empty);
         }
-        private Serilog.Core.Logger GetSpecificLoggerFileInstance(string specificIndexFormat, string logFilePath)
+        private Serilog.Core.Logger GetSpecificLoggerFileInstance(string fileName, string logFilePath, bool outputControl)
         {
-            if (ElasticUri == null)
-            {
-                Console.WriteLine("env:ELASTIC_URI is empty. Log cannot be written");
-                return null;
-            }
-
-            if (SpecificIndexFileFormat.TryGetValue(specificIndexFormat, out var specificLoggerItems) && specificLoggerItems.Item1)
+            if (SpecificIndexFileFormat.TryGetValue(fileName, out var specificLoggerItems) && specificLoggerItems.Item1)
             {
                 return specificLoggerItems.Item2;
             }
@@ -396,15 +390,22 @@ namespace DMicroservices.Utils.Logger
             {
                 lock (_objectInitializeLock)
                 {
-                    if (SpecificIndexFileFormat.TryGetValue(specificIndexFormat,
+                    if (SpecificIndexFileFormat.TryGetValue(fileName,
                             out specificLoggerItems) && specificLoggerItems.Item1)
                     {
                         return specificLoggerItems.Item2;
                     }
 
+                    string outputTemplate = string.Empty;
+
+                    if (outputControl)
+                        outputTemplate = "-----------------------------------{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}-----------------------------------{NewLine}{Exception}-----------------------------------LOG END LINE-----------------------------------{NewLine}{NewLine}";
+                    else
+                        outputTemplate = "-----------------------------------{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}-----------------------------------{NewLine}{NewLine}";
+
                     Serilog.Core.Logger specificLoggerInstance = null;
-                    ConfigureFileLogger(ElasticUri, specificIndexFormat, ref specificLoggerInstance, logFilePath);
-                    SpecificIndexFileFormat.TryAdd(specificIndexFormat, Tuple.Create(true, specificLoggerInstance));
+                    ConfigureFileLogger(fileName, outputTemplate, ref specificLoggerInstance, logFilePath);
+                    SpecificIndexFileFormat.TryAdd(fileName, Tuple.Create(true, specificLoggerInstance));
                     return specificLoggerInstance;
                 }
             }
