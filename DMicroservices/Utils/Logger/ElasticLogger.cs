@@ -19,6 +19,8 @@ namespace DMicroservices.Utils.Logger
         private static readonly string ElasticUri = Environment.GetEnvironmentVariable("ELASTIC_URI");
 
         private static readonly ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>> SpecificIndexFormat = new ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>>();
+        private static readonly ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>> SpecificIndexFileFormat = new ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>>();
+
         public bool IsConfigured { get; set; } = false;
 
         #region Singleton Section
@@ -70,8 +72,9 @@ namespace DMicroservices.Utils.Logger
             if (messageTemplate == null)
                 messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
             else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name} ";
 
+            SetStacktraceExceptionSource(ex);
             if (IsConfigured)
                 _errorLogger.Error(ex, messageTemplate);
 
@@ -112,13 +115,64 @@ namespace DMicroservices.Utils.Logger
             }
         }
 
+        #region Specific File Elastic Index Format Methods
+
+        public void ErrorSpecificIndexFormatInFile(Exception ex, string messageTemplate, string specificIndexFormat, string logFilePath)
+        {
+            messageTemplate = CreateMessageTemplate(messageTemplate);
+            GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath, true)?.Error(ex, messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
+        public void ErrorSpecificIndexFormatInFile(Exception ex, string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters, string logFilePath)
+        {
+            messageTemplate = CreateMessageTemplate(messageTemplate);
+
+            string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
+
+            GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath, true)?.Error(ex, parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
+#endif
+        }
+
+        public void InfoSpecificIndexFormatInFile(string messageTemplate, string fileName, string logFilePath)
+        {
+            messageTemplate = CreateMessageTemplate(messageTemplate);
+
+            GetSpecificLoggerFileInstance($"info-{fileName}", logFilePath, false)?.Information(messageTemplate);
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
+#endif
+        }
+
+        public void InfoSpecificIndexFormatInFile(string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters, string logFilePath)
+        {
+            messageTemplate = CreateMessageTemplate(messageTemplate);
+
+            string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
+
+            GetSpecificLoggerFileInstance($"info-{specificIndexFormat}", logFilePath, false)?.Information(parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
+
+#if DEBUG
+            Debug.WriteLine($"***********************************\nInformation : {parameterMessageTemplate}***********************************\n");
+#endif
+        }
+
+        #endregion
+
+        #region Specific Elastic Index Format Methods
+
         public void ErrorSpecificIndexFormat(Exception ex, string messageTemplate, string specificIndexFormat)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
+            SetStacktraceExceptionSource(ex);
             GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, messageTemplate);
 
 #if DEBUG
@@ -128,21 +182,12 @@ namespace DMicroservices.Utils.Logger
 
         public void ErrorSpecificIndexFormat(Exception ex, string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
-            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+            string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
 
-            foreach (var parameter in parameters)
-            {
-                stringBuilder.Append("{");
-                stringBuilder.Append(parameter.Key);
-                stringBuilder.AppendLine("}");
-            }
-
-            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+            SetStacktraceExceptionSource(ex);
+            GetSpecificLoggerInstance($"error-{specificIndexFormat}")?.Error(ex, parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
@@ -151,10 +196,7 @@ namespace DMicroservices.Utils.Logger
 
         public void InfoSpecificIndexFormat(string messageTemplate, string specificIndexFormat)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
             GetSpecificLoggerInstance($"info-{specificIndexFormat}")?.Information(messageTemplate);
 
@@ -165,36 +207,25 @@ namespace DMicroservices.Utils.Logger
 
         public void InfoSpecificIndexFormat(string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
-            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+            string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
 
-            foreach (var parameter in parameters)
-            {
-                stringBuilder.Append("{");
-                stringBuilder.Append(parameter.Key);
-                stringBuilder.AppendLine("}");
-            }
-
-            GetSpecificLoggerInstance($"info-{specificIndexFormat}")?.Information(stringBuilder.ToString(), parameters.ToList().Select(x => x.Value).ToArray());
+            GetSpecificLoggerInstance($"info-{specificIndexFormat}")?.Information(parameterMessageTemplate, parameters.ToList().Select(x => x.Value).ToArray());
 
 #if DEBUG
-            Debug.WriteLine($"***********************************\nInformation : {stringBuilder}***********************************\n");
+            Debug.WriteLine($"***********************************\nInformation : {parameterMessageTemplate}***********************************\n");
 #endif
         }
+        #endregion
 
+        #region Normal Elastic Index Methods
         public void Error(Exception ex, string messageTemplate, string companyNo)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
             messageTemplate += " by Company Id :{@CompanyNo}";
-
+            SetStacktraceExceptionSource(ex);
             if (IsConfigured)
                 _errorLogger.Error(ex, messageTemplate, companyNo);
 
@@ -205,13 +236,10 @@ namespace DMicroservices.Utils.Logger
 
         public void Error(Exception ex, string messageTemplate, object trackObject)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
             messageTemplate += " with Track object : {@trackObject}";
-
+            SetStacktraceExceptionSource(ex);
             if (IsConfigured)
                 _errorLogger.Error(ex, messageTemplate, Convert.ToString(trackObject));
 
@@ -248,10 +276,7 @@ namespace DMicroservices.Utils.Logger
 
         public void Info(string messageTemplate)
         {
-            if (messageTemplate == null)
-                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
-            else
-                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            messageTemplate = CreateMessageTemplate(messageTemplate);
 
             if (IsConfigured)
                 _infoLogger.Information(messageTemplate);
@@ -286,6 +311,7 @@ namespace DMicroservices.Utils.Logger
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
 #endif
         }
+        #endregion
 
         private void Configure(string elasticUri, string format)
         {
@@ -305,9 +331,14 @@ namespace DMicroservices.Utils.Logger
             IsConfigured = true;
         }
 
-        private void ConfigureFileLogger(string indexName, string outputTemplate, ref Serilog.Core.Logger logger)
+        private void ConfigureFileLogger(string indexName, string outputTemplate, ref Serilog.Core.Logger logger, string additionalFilePath = null)
         {
-            var combinedPath = Path.Combine(_fileLogLocation, indexName);
+            if (string.IsNullOrWhiteSpace(additionalFilePath))
+            {
+                additionalFilePath = _fileLogLocation;
+            }
+
+            var combinedPath = Path.Combine(additionalFilePath, "logs", indexName);
             var loggerConfiguration = new LoggerConfiguration()
               .MinimumLevel.Verbose()
               .WriteTo.File($"{combinedPath}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
@@ -342,6 +373,64 @@ namespace DMicroservices.Utils.Logger
                 loggerConfiguration.Enrich.WithProperty("PodId", Environment.GetEnvironmentVariable("HOSTNAME"));
 
             logger = loggerConfiguration.CreateLogger();
+        }
+
+        private void SetStacktraceExceptionSource(Exception ex)
+        {
+            ex.Source = string.IsNullOrEmpty(ex.Source) ? Environment.StackTrace : ex.Source + "---------StackTrace---------" + Environment.StackTrace;
+            ex.Source = ex.Source.Replace("at System.Environment.get_StackTrace()" + Environment.NewLine, string.Empty);
+        }
+        private Serilog.Core.Logger GetSpecificLoggerFileInstance(string fileName, string logFilePath, bool outputControl)
+        {
+            if (SpecificIndexFileFormat.TryGetValue(fileName, out var specificLoggerItems) && specificLoggerItems.Item1)
+            {
+                return specificLoggerItems.Item2;
+            }
+            else
+            {
+                lock (_objectInitializeLock)
+                {
+                    if (SpecificIndexFileFormat.TryGetValue(fileName,
+                            out specificLoggerItems) && specificLoggerItems.Item1)
+                    {
+                        return specificLoggerItems.Item2;
+                    }
+
+                    string outputTemplate = string.Empty;
+
+                    if (outputControl)
+                        outputTemplate = "-----------------------------------{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}-----------------------------------{NewLine}{Exception}-----------------------------------LOG END LINE-----------------------------------{NewLine}{NewLine}";
+                    else
+                        outputTemplate = "-----------------------------------{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}-----------------------------------{NewLine}{NewLine}";
+
+                    Serilog.Core.Logger specificLoggerInstance = null;
+                    ConfigureFileLogger(fileName, outputTemplate, ref specificLoggerInstance, logFilePath);
+                    SpecificIndexFileFormat.TryAdd(fileName, Tuple.Create(true, specificLoggerInstance));
+                    return specificLoggerInstance;
+                }
+            }
+        }
+
+        private string CreateMessageTemplate(string messageTemplate)
+        {
+            if (messageTemplate == null)
+                messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            else
+                messageTemplate += $", Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
+            return messageTemplate;
+        }
+
+        private string CreateWithParameterMessageTemplate(string messageTemplate, Dictionary<string, object> parameters)
+        {
+            StringBuilder stringBuilder = new StringBuilder(messageTemplate);
+
+            foreach (var parameter in parameters)
+            {
+                stringBuilder.Append("{");
+                stringBuilder.Append(parameter.Key);
+                stringBuilder.AppendLine("}");
+            }
+            return stringBuilder.ToString();
         }
     }
 }
