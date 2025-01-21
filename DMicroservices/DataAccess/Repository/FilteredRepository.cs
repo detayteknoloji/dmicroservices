@@ -256,11 +256,11 @@ namespace DMicroservices.DataAccess.Repository
             }
         }
 
-        public void Update(T entity, bool protectEntityCompanyNoConsistency = false)
+        public void Update(T entity, bool protectEntityFilterColumnNameConsistency = false)
         {
-            if (protectEntityCompanyNoConsistency)
+            if (protectEntityFilterColumnNameConsistency)
             {
-                EnsureCompanyNoConsistency(entity);
+                EnsureFilterColumnConsistency(entity);
             }
 
             if (FilterProperty != null)
@@ -281,11 +281,11 @@ namespace DMicroservices.DataAccess.Repository
             }
         }
 
-        public void UpdateProperties(T entity, string[] changeProperties, bool protectEntityCompanyNoConsistency = false)
+        public void UpdateProperties(T entity, string[] changeProperties, bool protectEntityFilterColumnNameConsistency = false)
         {
-            if (protectEntityCompanyNoConsistency)
+            if (protectEntityFilterColumnNameConsistency)
             {
-                EnsureCompanyNoConsistency(entity);
+                EnsureFilterColumnConsistency(entity);
             }
 
             if (FilterProperty != null)
@@ -309,13 +309,13 @@ namespace DMicroservices.DataAccess.Repository
             }
         }
 
-        private void EnsureCompanyNoConsistency(T entity)
+        private void EnsureFilterColumnConsistency(T entity)
         {
             bool isDetectInConsistencyProblem = false;
             try
             {
-                // T type de eğer bir companyNo kolonu varsa ve şirket numarasında uyumsuzluk varsa kontrol istenmişse updateyi engelleyelim.
-                var companyNoProperty = typeof(T).GetProperty("CompanyNo");
+                // T type de eğer bir FilterColumnName kolonu varsa ve değer korunmak istenipte, uyumsuzluk varsa kontrol istenmişse updateyi engelleyelim.
+                var companyNoProperty = typeof(T).GetProperty(FilterColumnName);
 
                 if (companyNoProperty != null)
                 {
@@ -324,7 +324,7 @@ namespace DMicroservices.DataAccess.Repository
                     if (!object.Equals(entityCompanyNo, FilterColumnValue))
                     {
                         isDetectInConsistencyProblem = true;
-                        throw new InvalidOperationException($"CompanyNo inconsistency detected. Repository: {this.GetType().Name}, Entity: {entityCompanyNo}");
+                        throw new InvalidOperationException($"FilterColumnName inconsistency detected. Repository: {this.GetType().Name}, Entity: {entityCompanyNo}");
                     }
                 }
             }
