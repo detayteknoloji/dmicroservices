@@ -170,5 +170,19 @@ namespace DMicroservices.DataAccess.Repository
             throw new NotImplementedException("This repository is read-only.");
         }
 
+        public void Update(T entity, bool protectEntityCompanyNoConsistency = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UpdateProperties(T entity, string[] changeProperties, bool protectEntityCompanyNoConsistency = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int CountByPredicateWithInclude(Expression<Func<T, bool>> predicate, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

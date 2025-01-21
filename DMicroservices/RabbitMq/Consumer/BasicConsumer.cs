@@ -85,7 +85,7 @@ namespace DMicroservices.RabbitMq.Consumer
             {
                 _isShutdowning = true;
                 ElasticLogger.Instance.InfoSpecificIndexFormat($"Only RabbitMqChannelShutdown Signal", ConstantString.RABBITMQ_INDEX_FORMAT);
-
+                NullifyStepBaseProperties();
                 try
                 {
                     if (_eventingBasicConsumer is { IsRunning: true })
@@ -265,5 +265,50 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             return _listenQueueName;
         }
+
+        private void NullifyStepBaseProperties()
+        {
+            try
+            {
+                var currentType = GetType();
+                var properties = currentType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                foreach (var property in properties)
+                {
+                    if (property.CanWrite && property.PropertyType.IsClass && property.GetSetMethod(true) != null)
+                    {
+                        try
+                        {
+                            property.SetValue(this, null);
+                            ElasticLogger.Instance.InfoSpecificIndexFormat($"Property {property.Name} set to null in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        }
+                        catch (Exception e)
+                        {
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"Failed to nullify property {property.Name} in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        }
+                    }
+                }
+
+                try
+                {
+                    // classda dispose methodu varsa call edelim.
+                    var disposeMethod = currentType.GetMethod("Dispose", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (disposeMethod != null)
+                    {
+                        disposeMethod.Invoke(this, null);
+                        ElasticLogger.Instance.InfoSpecificIndexFormat($"Dispose method called successfully in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                    }
+                }
+                catch (Exception e)
+                {
+                    ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"Failed to call Dispose method in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                }
+            }
+            catch (Exception ex)
+            {
+                ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "Error in NullifyStepBaseProperties", ConstantString.RABBITMQ_INDEX_FORMAT);
+            }
+        }
+
     }
 }

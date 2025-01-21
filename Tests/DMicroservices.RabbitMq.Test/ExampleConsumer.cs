@@ -34,7 +34,7 @@ namespace DMicroservices.RabbitMq.Test
                 ConsumerTag = e.ConsumerTag
             };
 
-            Thread.Sleep(50);
+            Thread.Sleep(5000);
             if (TestData.Data != sender.Message)
             {
                 Console.WriteLine($"err {TestData.Data} != {sender.Message} => {TestData.ConsumerTag} {e.ConsumerTag}");

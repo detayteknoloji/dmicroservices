@@ -12,6 +12,7 @@ namespace DMicroservices.DataAccess.Tests.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
+        public int CompanyNo { get; set; }
 
         [MaxLength(5)]
         public string Name { get; set; }
