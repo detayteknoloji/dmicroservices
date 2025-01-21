@@ -1,14 +1,12 @@
-﻿using System;
+﻿using DMicroservices.Base.Attributes;
+using DMicroservices.Utils.Extensions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using DMicroservices.Base.Attributes;
-using DMicroservices.DataAccess.History;
-using DMicroservices.Utils.Extensions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace DMicroservices.DataAccess.Repository
 {
@@ -169,6 +167,13 @@ namespace DMicroservices.DataAccess.Repository
             return iQueryable;
         }
 
+        public int CountByPredicateWithInclude(Expression<Func<T, bool>> predicate, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        {
+            if (additionalExpression != null)
+                return DbSet.Where(predicate).Include(includePaths).Where(additionalExpression).Count();
+            return DbSet.Where(predicate).Include(includePaths).Count();
+        }
+
         public IQueryable<dynamic> SelectList(Expression<Func<T, bool>> where, Expression<Func<T, dynamic>> select)
         {
             throw new NotImplementedException();
@@ -236,6 +241,16 @@ namespace DMicroservices.DataAccess.Repository
         public int SendSqlScalar(string sqlQuery)
         {
             return DbContext.Database.ExecuteSqlRaw(sqlQuery);
+        }
+
+        public void Update(T entity, bool protectEntityCompanyNoConsistency = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UpdateProperties(T entity, string[] changeProperties, bool protectEntityCompanyNoConsistency = false)
+        {
+            throw new NotImplementedException();
         }
     }
 }

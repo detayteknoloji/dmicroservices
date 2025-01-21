@@ -1,13 +1,13 @@
-﻿using System;
+﻿using DMicroservices.Base.Attributes;
+using DMicroservices.Utils.Extensions;
+using DMicroservices.Utils.Logger;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using DMicroservices.Base.Attributes;
-using DMicroservices.DataAccess.History;
-using DMicroservices.Utils.Extensions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace DMicroservices.DataAccess.Repository
 {
@@ -256,6 +256,86 @@ namespace DMicroservices.DataAccess.Repository
             }
         }
 
+        public void Update(T entity, bool protectEntityFilterColumnNameConsistency = false)
+        {
+            if (protectEntityFilterColumnNameConsistency)
+            {
+                EnsureFilterColumnConsistency(entity);
+            }
+
+            if (FilterProperty != null)
+                FilterProperty.SetValue(entity, FilterColumnValue);
+
+            DbSet.Attach(entity);
+            DbContext.Entry(entity).State = EntityState.Modified;
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
+        }
+
+        public void UpdateProperties(T entity, string[] changeProperties, bool protectEntityFilterColumnNameConsistency = false)
+        {
+            if (protectEntityFilterColumnNameConsistency)
+            {
+                EnsureFilterColumnConsistency(entity);
+            }
+
+            if (FilterProperty != null)
+                FilterProperty.SetValue(entity, FilterColumnValue);
+
+            DbSet.Attach(entity);
+            DbContext.Entry(entity).State = EntityState.Modified;
+
+            foreach (var propertyEntry in DbContext.Entry(entity).Properties)
+            {
+                if (!changeProperties.Contains(propertyEntry.Metadata.PropertyInfo.Name))
+                    propertyEntry.IsModified = false;
+
+                foreach (var customAttribute in propertyEntry.Metadata.PropertyInfo.GetCustomAttributes())
+                {
+                    if (customAttribute.TypeId.Equals(typeof(DisableChangeTrackAttribute)))
+                    {
+                        propertyEntry.IsModified = false;
+                    }
+                }
+            }
+        }
+
+        private void EnsureFilterColumnConsistency(T entity)
+        {
+            bool isDetectInConsistencyProblem = false;
+            try
+            {
+                // T type de eğer bir FilterColumnName kolonu varsa ve değer korunmak istenipte, uyumsuzluk varsa kontrol istenmişse updateyi engelleyelim.
+                var companyNoProperty = typeof(T).GetProperty(FilterColumnName);
+
+                if (companyNoProperty != null)
+                {
+                    var entityCompanyNo = companyNoProperty.GetValue(entity);
+
+                    if (!object.Equals(entityCompanyNo, FilterColumnValue))
+                    {
+                        isDetectInConsistencyProblem = true;
+                        throw new InvalidOperationException($"FilterColumnName inconsistency detected. Repository: {this.GetType().Name}, Entity: {entityCompanyNo}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (isDetectInConsistencyProblem)
+                    throw;
+                ElasticLogger.Instance.Error(ex, $"Ensure detecting base error! {ex.Message}");
+            }
+        }
+
         public void Update(Expression<Func<T, bool>> predicate, T entity)
         {
             throw new NotImplementedException();
@@ -264,6 +344,11 @@ namespace DMicroservices.DataAccess.Repository
         public int SendSqlScalar(string sqlQuery)
         {
             return DbContext.Database.ExecuteSqlRaw(sqlQuery);
+        }
+
+        public int CountByPredicateWithInclude(Expression<Func<T, bool>> predicate, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null)
+        {
+            throw new NotImplementedException();
         }
     }
 }

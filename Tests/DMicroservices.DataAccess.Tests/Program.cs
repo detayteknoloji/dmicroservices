@@ -1,18 +1,13 @@
 ﻿using DMicroservices.DataAccess.DynamicQuery;
 using DMicroservices.DataAccess.Redis;
+using DMicroservices.DataAccess.Repository;
 using DMicroservices.DataAccess.Tests.Models;
 using DMicroservices.DataAccess.UnitOfWork;
-using DMicroservices.Utils.Logger;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using DMicroservices.DataAccess.Repository;
-using Microsoft.AspNetCore.Mvc.Formatters;
-using Microsoft.EntityFrameworkCore;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -21,11 +16,29 @@ namespace DMicroservices.DataAccess.Tests
         private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
-            using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>())
+            var saveCity = new City()
             {
-                int affectedRows = uow.GetRepository<City>().SendSqlScalar("update City set Name='sb' where Id=1");
+                Name = "Foo",
+                CompanyNo = 5,
+            };
+            using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>("CompanyNo", 5))
+            {
+                uow.GetRepository<City>().Add(saveCity);
 
                 uow.SaveChanges();
+            }
+            try
+            {
+                saveCity.Name = "FooTest";
+                using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>("CompanyNo", 5))
+                {
+                    uow.GetRepository<City>().Update(saveCity, true);
+                    uow.SaveChanges();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
             }
 
             //Dictionary<string, string> t = new Dictionary<string, string>();

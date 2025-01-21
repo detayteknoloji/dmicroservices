@@ -45,6 +45,13 @@ namespace DMicroservices.DataAccess.Repository
         int Count(Expression<Func<T, bool>> predicate);
 
         /// <summary>
+        /// Verilen sorguya göre tablodaki sayıyı gönderir.
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <returns></returns>
+        int CountByPredicateWithInclude(Expression<Func<T, bool>> predicate, List<string> includePaths, Expression<Func<T, bool>> additionalExpression = null);
+
+        /// <summary>
         /// İstenilen veriyi single olarak getirir.
         /// </summary>
         /// <param name="predicate"></param>
@@ -111,6 +118,21 @@ namespace DMicroservices.DataAccess.Repository
         /// </summary>
         /// <param name="entity"></param>
         void Update(T entity);
+
+        /// <summary>
+        /// Verilen entity i güncelle
+        /// </summary>
+        /// <param name="entity">Güncellenecek Entity</param>
+        /// <param name="protectEntityCompanyNoConsistency">Veri üzerindeki şirket bilgisini koru</param>
+        public void Update(T entity, bool protectEntityCompanyNoConsistency = false);
+
+        /// <summary>
+        /// Verilen entity i güncelle
+        /// </summary>
+        /// <param name="entity">Güncellenecek Entity</param>
+        /// <param name="changeProperties">Belirli columnları güncelle. Nesne boş ise güncelleme yapmaz</param>
+        /// <param name="protectEntityCompanyNoConsistency">Veri üzerindeki şirket bilgisini koru</param>
+        public void UpdateProperties(T entity, string[] changeProperties, bool protectEntityCompanyNoConsistency = false);
 
         /// <summary>
         /// Verilen entity i güncelle.
