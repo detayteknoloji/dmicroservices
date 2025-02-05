@@ -4,14 +4,14 @@ using DMicroservices.Utils.Logger;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Nest;
-using RabbitMQ.Client.Exceptions;
-using System.Reflection;
 
 namespace DMicroservices.RabbitMq.Consumer
 {
@@ -272,10 +272,15 @@ namespace DMicroservices.RabbitMq.Consumer
             {
                 var currentType = GetType();
                 var properties = currentType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
+                List<string> nullablePropertiesList = new List<string>();
+                var nullablePropertyEnv = Environment.GetEnvironmentVariable("NULLABLE_PROPERTIES_NAME")?.Split(',');
+                if (nullablePropertyEnv != null)
+                {
+                    nullablePropertiesList.AddRange(nullablePropertyEnv);
+                }
                 foreach (var property in properties)
                 {
-                    if (property.CanWrite && property.PropertyType.IsClass && property.GetSetMethod(true) != null)
+                    if (property.CanWrite && property.PropertyType.IsClass && property.GetSetMethod(true) != null && nullablePropertiesList.Contains(property.Name))
                     {
                         try
                         {
