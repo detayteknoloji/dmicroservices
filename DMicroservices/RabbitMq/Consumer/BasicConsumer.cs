@@ -270,14 +270,16 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             try
             {
+                var nullablePropertyEnv = Environment.GetEnvironmentVariable("NULLABLE_PROPERTIES_NAME")?.Split(',');
+                if (nullablePropertyEnv == null || nullablePropertyEnv.Length == 0)
+                {
+                    return;
+                }
+
                 var currentType = GetType();
                 var properties = currentType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 List<string> nullablePropertiesList = new List<string>();
-                var nullablePropertyEnv = Environment.GetEnvironmentVariable("NULLABLE_PROPERTIES_NAME")?.Split(',');
-                if (nullablePropertyEnv != null)
-                {
-                    nullablePropertiesList.AddRange(nullablePropertyEnv);
-                }
+
                 foreach (var property in properties)
                 {
                     if (property.CanWrite && property.PropertyType.IsClass && property.GetSetMethod(true) != null && nullablePropertiesList.Contains(property.Name))
