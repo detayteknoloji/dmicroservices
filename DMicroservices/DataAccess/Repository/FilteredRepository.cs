@@ -314,6 +314,17 @@ namespace DMicroservices.DataAccess.Repository
             bool isDetectInConsistencyProblem = false;
             try
             {
+                // project entity parametresi açıksa ve WAIT_FOR_ENSURE_ACCESSORS_CONSISTENCY parametresi true ise unitofworkte açılan companyNo ile nesnenin companyNo'su farklı ise update hatası alınır.
+                bool ensureConsistencyParameter =
+               !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAIT_FOR_ENSURE_ACCESSORS_CONSISTENCY"))
+                  ? bool.Parse(Environment.GetEnvironmentVariable("WAIT_FOR_ENSURE_ACCESSORS_CONSISTENCY"))
+                  : false;
+
+                if(!ensureConsistencyParameter)
+                {
+                    return;
+                }
+
                 // T type de eğer bir FilterColumnName kolonu varsa ve değer korunmak istenipte, uyumsuzluk varsa kontrol istenmişse updateyi engelleyelim.
                 var companyNoProperty = typeof(T).GetProperty(FilterColumnName);
 

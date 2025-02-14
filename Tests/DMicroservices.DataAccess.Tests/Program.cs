@@ -30,7 +30,7 @@ namespace DMicroservices.DataAccess.Tests
             try
             {
                 saveCity.Name = "FooTest";
-                using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>("CompanyNo", 5))
+                using (UnitOfWork<MasterContext> uow = new UnitOfWork<MasterContext>("CompanyNo", 2))
                 {
                     uow.GetRepository<City>().Update(saveCity, true);
                     uow.SaveChanges();

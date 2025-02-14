@@ -6,7 +6,8 @@
         "RABBITMQ_URI": "amqp://root:root@127.0.0.1:13034",
         "REDIS_URL": "localhost:13036",
         "ELASTIC_URI": "http://localhost:13030/",
-        "LOG_INDEX_FORMAT": "serserilog-{0:yyyy.MM.dd}"
+        "LOG_INDEX_FORMAT": "serserilog-{0:yyyy.MM.dd}",
+        "WAIT_FOR_ENSURE_ACCESSORS_CONSISTENCY": "true"
       }
     }
   }

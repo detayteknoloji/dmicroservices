@@ -33,6 +33,8 @@ namespace DMicroservices.RabbitMq.Consumer
 
         public virtual bool AutoDelete { get; set; } = false;
 
+        public virtual bool WaitSignalCleanup { get; set; } = false;
+
         public virtual ExchangeContent ExchangeContent { get; set; }
 
         public virtual Action<T, BasicDeliverEventArgs> DataReceivedAction { get; }
@@ -63,7 +65,7 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private readonly object _stateChangeLockObject = new object();
         private readonly object _shutdownChangeLockObject = new object();
-
+        private readonly ManualResetEventSlim _shutdownWaitHandle = new ManualResetEventSlim(false);
 
         protected BasicConsumer()
         {
@@ -85,7 +87,16 @@ namespace DMicroservices.RabbitMq.Consumer
             {
                 _isShutdowning = true;
                 ElasticLogger.Instance.InfoSpecificIndexFormat($"Only RabbitMqChannelShutdown Signal", ConstantString.RABBITMQ_INDEX_FORMAT);
-                NullifyStepBaseProperties();
+
+                // IS_RABBIT_SHUTDOWN_CALL_CANCEL parametresi açıksa ve kuyruk üzerindeki WaitSignalCleanup property'si true ise stepExecution üzerindeki işlem bitmeden veya 120 saniye geçmeden kuyruk öldüğünde, tekrar dinlemeye başlamaz, ya StepBase'nin finally bloğu çalışmalı yada 120 saniye geçmiş olmalıdır.
+                bool invokeCancellationToken =
+                     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("IS_RABBIT_SHUTDOWN_CALL_CANCEL"))
+                        ? bool.Parse(Environment.GetEnvironmentVariable("IS_RABBIT_SHUTDOWN_CALL_CANCEL"))
+                        : false;
+
+                if (invokeCancellationToken && WaitSignalCleanup)
+                    OnShutdownTriggered();
+
                 try
                 {
                     if (_eventingBasicConsumer is { IsRunning: true })
@@ -102,6 +113,23 @@ namespace DMicroservices.RabbitMq.Consumer
 
                 Thread.Sleep(TimeSpan.FromSeconds(10));
 
+                if (invokeCancellationToken && WaitSignalCleanup)
+                {
+                    int waitTimeoutSeconds = 120; // 5 dakika sinyal bekleme süresi
+                    bool isSignalReceived = _shutdownWaitHandle.Wait(TimeSpan.FromSeconds(waitTimeoutSeconds));
+
+                    if (!isSignalReceived)
+                    {
+                        ElasticLogger.Instance.InfoSpecificIndexFormat(
+                            $"RabbitMqChannelShutdown: Signal beklenirken timeout oluştu! {waitTimeoutSeconds} saniye geçti.",
+                            ConstantString.RABBITMQ_INDEX_FORMAT);
+
+                    }
+
+                    // Sinyal alındıysa, resetleyelim çünkü tekrar kullanılacak.
+                    _shutdownWaitHandle.Reset();
+                }
+
                 ConsumerListening = false;
                 if (_dontReinitialize)
                     return;
@@ -109,6 +137,17 @@ namespace DMicroservices.RabbitMq.Consumer
                 StartConsume();
                 _isShutdowning = false;
             }
+        }
+
+        /// <summary>
+        /// Shutdown işlemini bekleten sinyali serbest bırakır.
+        /// </summary>
+        protected void SignalShutdownContinue()
+        {
+            ElasticLogger.Instance.InfoSpecificIndexFormat(
+                        $"RabbitMqCleanup ReceivedSignal: Signal Alındı kilit açıldı.",
+                        ConstantString.RABBITMQ_INDEX_FORMAT);
+            _shutdownWaitHandle.Set();
         }
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
@@ -188,7 +227,7 @@ namespace DMicroservices.RabbitMq.Consumer
                         _eventingBasicConsumer.ConsumerCancelled += (sender, args) =>
                         {
                             ElasticLogger.Instance.ErrorSpecificIndexFormat(
-                                   new Exception($"{args} Queue: {_listenQueueName}"), "RabbitMQ/ModelShutdown",
+                                   new Exception($"{args} Queue: {_listenQueueName}"), "RabbitMQ/ConsumerCancelled",
                                    ConstantString.RABBITMQ_INDEX_FORMAT);
                             Task.Run(() => { RabbitMqChannelShutdown(); });
                         };
@@ -266,56 +305,34 @@ namespace DMicroservices.RabbitMq.Consumer
             return _listenQueueName;
         }
 
-        private void NullifyStepBaseProperties()
+        protected void OnShutdownTriggered()
         {
             try
             {
-                var nullablePropertyEnv = Environment.GetEnvironmentVariable("NULLABLE_PROPERTIES_NAME")?.Split(',');
-                if (nullablePropertyEnv == null || nullablePropertyEnv.Length == 0)
+                var currentType = this.GetType();
+
+                var tokenSourceField = currentType.GetField("CancellationTokenSource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (tokenSourceField != null)
                 {
-                    return;
+                    var tokenSourceObj = tokenSourceField.GetValue(this) as CancellationTokenSource;
+                    tokenSourceObj?.Cancel();
+                    ElasticLogger.Instance.InfoSpecificIndexFormat($"CancellationTokenSource canceled (field) in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
                 }
-
-                var currentType = GetType();
-                var properties = currentType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                List<string> nullablePropertiesList = new List<string>();
-
-                foreach (var property in properties)
+                else
                 {
-                    if (property.CanWrite && property.PropertyType.IsClass && property.GetSetMethod(true) != null && nullablePropertiesList.Contains(property.Name))
+                    var tokenSourceProperty = currentType.GetProperty("CancellationTokenSource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (tokenSourceProperty != null)
                     {
-                        try
-                        {
-                            property.SetValue(this, null);
-                            ElasticLogger.Instance.InfoSpecificIndexFormat($"Property {property.Name} set to null in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
-                        }
-                        catch (Exception e)
-                        {
-                            ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"Failed to nullify property {property.Name} in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
-                        }
+                        var tokenSourceObj = tokenSourceProperty.GetValue(this) as CancellationTokenSource;
+                        tokenSourceObj?.Cancel();
+                        ElasticLogger.Instance.InfoSpecificIndexFormat($"CancellationTokenSource canceled (property) in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }
-                }
-
-                try
-                {
-                    // classda dispose methodu varsa call edelim.
-                    var disposeMethod = currentType.GetMethod("Dispose", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    if (disposeMethod != null)
-                    {
-                        disposeMethod.Invoke(this, null);
-                        ElasticLogger.Instance.InfoSpecificIndexFormat($"Dispose method called successfully in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
-                    }
-                }
-                catch (Exception e)
-                {
-                    ElasticLogger.Instance.ErrorSpecificIndexFormat(e, $"Failed to call Dispose method in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
                 }
             }
             catch (Exception ex)
             {
-                ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, "Error in NullifyStepBaseProperties", ConstantString.RABBITMQ_INDEX_FORMAT);
+                ElasticLogger.Instance.Error(ex, "OnShutdownTriggered method error!");
             }
         }
-
     }
 }
