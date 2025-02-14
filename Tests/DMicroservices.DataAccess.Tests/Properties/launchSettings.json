@@ -11,7 +11,9 @@
         "ELASTIC_URI": "http://localhost:13030",
         "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}",
         "REDIS_URL": "127.0.0.1:13036",
-        "THROW_MONGO_ERROR": "false"
+        "THROW_MONGO_ERROR": "false",
+        "WAIT_FOR_ENSURE_ACCESSORS_CONSISTENCY": "true",
+        "IS_RABBIT_SHUTDOWN_CALL_CANCEL": "true"
       }
     }
   }
