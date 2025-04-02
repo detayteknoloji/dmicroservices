@@ -9,45 +9,52 @@ namespace DMicroservices.RabbitMq.Base
 {
     public class RabbitMqHealthCheck : IHealthCheck
     {
-        private Action<string> _afterConnectionAction;
+        private readonly Action<string> _afterConnectionAction;
+
         public RabbitMqHealthCheck(Action<string> afterConnectionAction)
         {
             _afterConnectionAction = afterConnectionAction;
         }
-        public RabbitMqHealthCheck()
+
+        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-        }
-        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
-        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                ElasticLogger.Instance.Info("RabbitMQ health check cancelled → Degraded returned");
+                return HealthCheckResult.Degraded("RabbitMQ health check timeout (under load)");
+            }
+
             if (!RabbitMqConnection.Instance.IsConnected)
             {
-                RabbitMQ.Client.IConnection rabbitConnection = null;
-                var tryConnectionTask = new Task(() =>
+                try
                 {
-                    try
+                    var task = Task.Run(() =>
                     {
-                        rabbitConnection = RabbitMqConnection.Instance.GetConnection();
-                    }
-                    catch
+                        var conn = RabbitMqConnection.Instance.GetConnection();
+                        return conn != null && conn.IsOpen;
+                    }, cancellationToken);
+
+                    var completedTask = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken));
+                    if (completedTask != task || !task.Result)
                     {
-                        //ignored
+                        return HealthCheckResult.Unhealthy("RabbitMQ Connection Lost");
                     }
-                });
-                tryConnectionTask.Start();
-                tryConnectionTask.Wait(TimeSpan.FromSeconds(1));
-                if (rabbitConnection == null || !rabbitConnection.IsOpen)
-                {
-                    ElasticLogger.Instance.Info($"RabbitMQ Connection Lost");
-                    return Task.FromResult(HealthCheckResult.Unhealthy("RabbitMQ Connection Lost"));
+
+                    _afterConnectionAction?.Invoke("RabbitMQ ready");
                 }
-                else
+                catch (OperationCanceledException)
                 {
-                    if (_afterConnectionAction != null)
-                        _afterConnectionAction.Invoke("Called /IsReady Method");
+                    ElasticLogger.Instance.Info("RabbitMQ health check task cancelled");
+                    return HealthCheckResult.Degraded("RabbitMQ health check cancelled");
+                }
+                catch (Exception ex)
+                {
+                    ElasticLogger.Instance.Error(ex, "RabbitMQ Connection Exception");
+                    return HealthCheckResult.Unhealthy("RabbitMQ error");
                 }
             }
 
-            return Task.FromResult(HealthCheckResult.Healthy());
+            return HealthCheckResult.Healthy();
         }
     }
 }

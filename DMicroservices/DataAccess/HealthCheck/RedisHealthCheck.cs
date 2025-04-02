@@ -11,18 +11,22 @@ namespace DMicroservices.RabbitMq.Base
 {
     public class RedisHealthCheck : IHealthCheck
     {
-
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                ElasticLogger.Instance.Info("Redis health check cancelled → Degraded returned");
+                return Task.FromResult(HealthCheckResult.Degraded("Redis health check timeout (under load)"));
+            }
+
             try
             {
-                RedisManager.Instance.Get("test");
+                var value = RedisManager.Instance.Get("test");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                ElasticLogger.Instance.Error(e, $"Redis Connection Lost");
+                ElasticLogger.Instance.Error(ex, "Redis Connection Lost");
                 return Task.FromResult(HealthCheckResult.Unhealthy("Redis Connection Lost"));
-
             }
 
             return Task.FromResult(HealthCheckResult.Healthy());
