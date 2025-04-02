@@ -34,8 +34,8 @@ namespace DMicroservices.RabbitMq.Base
                         return conn != null && conn.IsOpen;
                     }, cancellationToken);
 
-                    var isOpen = task.Wait(TimeSpan.FromSeconds(1).Milliseconds, cancellationToken);
-                    if (!isOpen)
+                    var completedTask = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken));
+                    if (completedTask != task || !task.Result)
                     {
                         return HealthCheckResult.Unhealthy("RabbitMQ Connection Lost");
                     }
