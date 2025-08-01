@@ -16,6 +16,13 @@ namespace DMicroservices.DataAccess.Tests
         private static RedisList<Search> searchList = new RedisList<Search>("slist");
         static void Main(string[] args)
         {
+
+            RedisManagerV2.Instance.Get("asd");
+            var aa = RedisManagerV2.Instance.GetLockFactory.CreateLock("test-lock", TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            if (aa.IsAcquired)
+            {
+
+            }
             var saveCity = new City()
             {
                 Name = "Foo",
