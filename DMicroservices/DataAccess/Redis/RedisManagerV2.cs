@@ -1,8 +1,6 @@
 ﻿using DMicroservices.Utils.Logger;
 using MessagePack;
 using MongoDB.Driver;
-using RedLockNet.SERedis;
-using RedLockNet.SERedis.Configuration;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -19,14 +17,13 @@ namespace DMicroservices.DataAccess.Redis
         // redis connection nesneleri
         private static volatile IConnectionMultiplexer _connectionMultiplexer;
         private static readonly object _connectionLock = new object();
-        private static readonly object _lockObjFactory = new object();
 
-        // redis'e en son ne zaman bağlandı ? 
-        private static DateTime _lastConnectionAttempt = DateTime.MinValue;
-        // son bağlanmasının üzerinden eğer connection fail ise tekrar ne zaman bağlanmayı denesin ?
-        private static readonly TimeSpan _reconnectInterval = TimeSpan.FromSeconds(30);
+        // redis down oldugunda circuit breaker kaç saniye işlemlere yok çeksin ? throw için yine circuit breaker devre dışıdır throw atar.
+        private static readonly object _circuitLock = new object();
+        private static volatile bool _isCircuitOpen = false;
+        private static DateTime _lastCircuitOpenTime = DateTime.MinValue;
+        private static readonly TimeSpan _circuitOpenDuration = TimeSpan.FromSeconds(30); // 30 saniye boyunca denemeye izin vermciez.
 
-        private RedLockFactory RedLockFactory { get; set; }
 
         #region Singleton section
         private static readonly Lazy<RedisManagerV2> _instance =
@@ -34,9 +31,7 @@ namespace DMicroservices.DataAccess.Redis
 
         private RedisManagerV2()
         {
-            LogInfo($"Container {_containerPodName}: Initializing Redis Manager.");
-
-            InitializeRedisConnection();
+            LogInfo($"Container {_containerPodName}: Initializing Redis ManagerV2.");
 
             MessagePackSerializer.DefaultOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
 
@@ -47,93 +42,75 @@ namespace DMicroservices.DataAccess.Redis
         public static RedisManagerV2 Instance => _instance.Value;
         #endregion
 
-        #region Connections
-
-        private void InitializeRedisConnection()
-        {
-            if (string.IsNullOrEmpty(_redisUrl))
-            {
-                LogInfo($"Container {_containerPodName}: Redis url bilgisi bulunamadı!. Lock ve cache işlemleri gerçekleşmeyecek!");
-                return;
-            }
-
-            try
-            {
-                var options = ConfigurationOptions.Parse(_redisUrl);
-
-                // Redis connection ayarları
-                options.ClientName = $"Container-{_containerPodName}";
-                options.AbortOnConnectFail = false;
-                options.ConnectRetry = 3;
-                options.ConnectTimeout = 3000;  // 3 saniye (15 yerine)
-                options.SyncTimeout = 3000;     // 3 saniye (15 yerine)
-                options.AsyncTimeout = 3000;
-                options.KeepAlive = 30;         // 30 saniye
-
-                options.DefaultDatabase = 0;
-
-                _connectionMultiplexer = ConnectionMultiplexer.Connect(options);
-
-
-                RegisterConnectionEvents();
-                LogInfo($"Container {_containerPodName}: Redis bağlantısı sağlandı");
-            }
-            catch (Exception ex)
-            {
-                LogError($"Container {_containerPodName}: Redis Başlatılırken hata aldı: {ex.Message}", ex);
-                _lastConnectionAttempt = DateTime.Now;
-            }
-        }
-
-        #endregion
-
         #region Bağlantı ayarlamaları ve retry denemeleri
 
-        private IDatabase GetDatabase(bool isThrowEx)
+        // connection dog
+        private IConnectionMultiplexer GetConnection()
         {
-
-            if (isThrowEx)
+            if (_connectionMultiplexer != null && _connectionMultiplexer.IsConnected)
             {
-                if ((_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected) && ShouldRetryConnection())
-                {
-                    lock (_connectionLock)
-                    {
-                        if ((_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected) && ShouldRetryConnection())
-                        {
-                            InitializeRedisConnection();
-                        }
-                    }
-                }
-                return _connectionMultiplexer.GetDatabase();
+                return _connectionMultiplexer;
             }
 
-            if (!_connectionMultiplexer.IsConnected && ShouldRetryConnection())
+            lock (_connectionLock)
             {
-                lock (_connectionLock)
+                if (_connectionMultiplexer != null && _connectionMultiplexer.IsConnected)
                 {
-                    if (!_connectionMultiplexer.IsConnected && ShouldRetryConnection())
-                    {
-                        _lastConnectionAttempt = DateTime.Now;
-                        InitializeRedisConnection();
-                    }
+                    return _connectionMultiplexer;
+                }
+
+                _connectionMultiplexer?.Dispose();
+
+                if (string.IsNullOrEmpty(_redisUrl))
+                {
+                    LogInfo($"Container {_containerPodName}: Redis url bilgisi bulunamadı!. Lock ve cache işlemleri gerçekleşmeyecek!");
+                    return null;
+                }
+
+                try
+                {
+                    LogInfo("Redis Bağlantısı kurmak istenildi, yeni connection açılmak veya eski connection ezilmek züere multiplexer acilacak");
+                    var options = ConfigurationOptions.Parse(_redisUrl);
+                    options.AbortOnConnectFail = false;
+                    options.ClientName = $"Container-{_containerPodName}";
+                    options.AbortOnConnectFail = false;
+                    options.ConnectRetry = 3;
+                    options.ConnectTimeout = 3000;  // 3 saniye içinde hankshkae yapmalı
+                    options.SyncTimeout = 15000;     // 3 saniyede gerekli cevabı getirmeli // şimdilik 15 saniyede kalsın, obsolote methodlar kalkınca 3 saniyeye düşürmeli
+                    options.AsyncTimeout = 15000;    // 3 saniyede gerekli cevabı getirmeli // şimdilik 15 saniyede kalsın, obsolote methodlar kalkınca 3 saniyeye düşürmeli
+                    options.KeepAlive = 30;         // 30 saniyeyede bir connectionu ben açığım diye bildirim atmalı
+
+                    options.DefaultDatabase = 0; // default 0 da olsun.
+
+                    _connectionMultiplexer = ConnectionMultiplexer.Connect(options);
+                    RegisterConnectionEvents();
+                    LogInfo($"Container {_containerPodName}: Redis bağlantısı sağlandı");
+                }
+                catch (Exception ex)
+                {
+                    LogError("Yeni redis connectionu yaratılırken hata alındı", ex);
+                    _connectionMultiplexer = null;
                 }
             }
-
-            return _connectionMultiplexer.IsConnected && _connectionMultiplexer?.IsConnected == true
-                ? _connectionMultiplexer.GetDatabase()
-                : null;
+            return _connectionMultiplexer;
         }
 
-        private bool ShouldRetryConnection()
+        private IDatabase GetDatabase(int dataBaseNum = -1)
         {
-            return DateTime.Now - _lastConnectionAttempt > _reconnectInterval;
+            var connection = GetConnection();
+            if (connection == null) // dog connectionu getirmediyse connection problemlidir circut ettirelim
+            {
+                throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Redis connection elde edilemedi!");
+            }
+
+            return connection.GetDatabase(dataBaseNum);
         }
 
         #endregion
 
         #region Core Operation - Tüm operasyonlar buradan yönetilir.
 
-        private T ExecuteRedisOperation<T>(Func<IDatabase, T> redisOperation, string key, string operationName, bool isThrowException = false)
+        private T ExecuteRedisOperation<T>(Func<IDatabase, T> redisOperation, string key, string operationName, int databaseNum = -1, bool isThrowException = false)
         {
 
             if (string.IsNullOrWhiteSpace(key))
@@ -143,22 +120,58 @@ namespace DMicroservices.DataAccess.Redis
 
             try
             {
-                var database = GetDatabase(isThrowException);
+                lock (_circuitLock)
+                {
+                    if (_isCircuitOpen)
+                    {
+                        if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
+                        {
+                            if (isThrowException) throw new RedisCircuitOpenException($"Redis circuit is open. Operation '{operationName}' was not attempted.");
+                            return default;
+                        }
+
+                        _lastCircuitOpenTime = DateTime.UtcNow;
+                    }
+                }
+
+                var database = GetDatabase(databaseNum);
                 if (database != null)
                 {
                     var result = redisOperation(database);
-
+                    if (_isCircuitOpen)
+                    {
+                        lock (_circuitLock)
+                        {
+                            if (_isCircuitOpen)
+                            {
+                                _isCircuitOpen = false;
+                                LogInfo("Redis bağlantısı tekrar sağlandı. Redis connection önleme sistemi kapatıldı!");
+                            }
+                        }
+                    }
                     return result;
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is RedisConnectionException || ex is RedisTimeoutException)
             {
-                LogError($"Container {_containerPodName}: Redis {operationName} '{key}' setlenirken hata aldı: {ex.Message}", ex);
+                lock (_circuitLock)
+                {
+                    if (!_isCircuitOpen)
+                    {
+                        LogError($"Container {_containerPodName}: Redis bağlantısı başarısız! OperationName: {operationName}. Connection önleme sistemi devreye giriyor! {_circuitOpenDuration.TotalSeconds} saniye sürecek! Bu saniye boyunca redis connectionu açılmayacaktır.", ex);
+                        _isCircuitOpen = true;
+                        _lastCircuitOpenTime = DateTime.UtcNow;
+                    }
+                }
 
                 if (isThrowException)
                     throw;
-
-                return default(T);
+            }
+            catch (Exception ex)
+            {
+                LogError($"Container {_containerPodName}: Redis '{key}' ile yapılan {operationName}  işemi başarısız oldu! {ex.Message}", ex);
+                if (isThrowException)
+                    throw;
             }
 
             return default(T);
@@ -186,7 +199,6 @@ namespace DMicroservices.DataAccess.Redis
 
         /// <summary>
         /// Redis'e veri kaydeder. 
-        /// Redis yoksa: isCritical=true ve hybrid mode açık ise queue'ya alır, değilse false döner.
         /// </summary>
         public bool Set(string key, string value, TimeSpan? expireTime = null, bool isThrowEx = true)
         {
@@ -220,7 +232,6 @@ namespace DMicroservices.DataAccess.Redis
 
         /// <summary>
         /// Key'i siler.
-        /// Redis yoksa: isCritical=true ve hybrid mode açık ise queue'ya alır.
         /// </summary>
         public bool DeleteByKey(string key, bool isThrowEx = true)
         {
@@ -273,78 +284,42 @@ namespace DMicroservices.DataAccess.Redis
 
         public string Get(string key, int databaseNum, bool isThrowEx = true)
         {
-            try
-            {
-                var database = GetDatabase(isThrowEx);
-                if (database != null)
-                {
-                    var db = _connectionMultiplexer.GetDatabase(databaseNum);
-                    var redisResult = db.StringGet(key);
-                    return redisResult.HasValue ? redisResult.ToString() : null;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError($"Container {_containerPodName}: Redisten '{key}' getirilirken hata aldı! Redis DB numarası {databaseNum}: {ex.Message}", ex);
-                if (isThrowEx)
-                    throw;
-                return null;
-            }
-            return null;
+            return ExecuteRedisOperation(
+                                         db =>
+                                         {
+                                             var result = db.StringGet(key);
+                                             return result.HasValue ? result.ToString() : null;
+                                         },
+                                         key,
+                                         "GET",
+                                         databaseNum,
+                                         isThrowEx
+                                     );
+
         }
 
         public bool Set(string key, string value, int databaseNum, TimeSpan? expireTime = null, bool isThrowEx = true)
         {
-
-            try
-            {
-                var database = GetDatabase(isThrowEx);
-                if (database != null)
-                {
-                    var db = _connectionMultiplexer.GetDatabase(databaseNum);
-                    var result = expireTime > TimeSpan.MinValue
-                        ? db.StringSet(key, value, expireTime)
-                        : db.StringSet(key, value);
-
-                    return result;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError($"Container {_containerPodName}: Redisten '{key}' getirilirken hata aldı! Redis DB numarası {databaseNum}: {ex.Message}", ex);
-                if (isThrowEx)
-                    throw;
-
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
                 return false;
-            }
 
-            return false;
+            return ExecuteRedisOperation(
+                db => db.StringSet(key, value, expireTime),
+                key,
+                "SET",
+                databaseNum,
+                isThrowEx
+            );
         }
 
         public bool DeleteByKey(string key, int databaseNum, bool isThrowEx = true)
         {
-            try
-            {
-                var database = GetDatabase(isThrowEx);
-                if (database != null)
-                {
-                    var db = _connectionMultiplexer.GetDatabase(databaseNum);
-                    var result = db.KeyDelete(key);
-
-                    return result;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError($"Container {_containerPodName}: Redisten '{key}' silinirken hata aldı! Redis DB numarası {databaseNum}: {ex.Message}", ex);
-                if (isThrowEx)
-                    throw;
-
-                return false;
-            }
-
-
-            return false;
+            return ExecuteRedisOperation(
+           db => db.KeyDelete(key),
+           key,
+           "SET",
+           databaseNum,
+           isThrowEx);
         }
 
         #endregion
@@ -376,36 +351,16 @@ namespace DMicroservices.DataAccess.Redis
 
         public bool Set(Dictionary<string, string> bulkInsertList, int databaseNum, bool isThrowEx = true)
         {
-            var database = GetDatabase();
-            if (database != null)
-            {
-                try
-                {
-                    var db = _connectionMultiplexer.GetDatabase(databaseNum);
-                    KeyValuePair<RedisKey, RedisValue>[] redisValueArray =
-                        new KeyValuePair<RedisKey, RedisValue>[bulkInsertList.Count];
+            var keyValuePair = bulkInsertList.Select(x => new KeyValuePair<RedisKey, RedisValue>(x.Key, x.Value)).ToArray();
+            string logKey = $"BULK_{keyValuePair.Length}_ITEMS";
 
-                    int i = 0;
-                    foreach (var (key, value) in bulkInsertList)
-                    {
-                        redisValueArray[i] = new KeyValuePair<RedisKey, RedisValue>(key, value);
-                        i++;
-                    }
-
-                    var result = db.StringSet(redisValueArray);
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    LogError($"Container {_containerPodName}: Redisten bulk insert yapılırken hata aldı! Redis DB numarası {databaseNum}: {ex.Message}", ex);
-                    if (isThrowEx)
-                        throw;
-
-                    return false;
-                }
-            }
-
-            return false;
+            return ExecuteRedisOperation(
+                db => db.StringSet(keyValuePair),
+                logKey,
+                "BULK_SET",
+                databaseNum,
+                isThrowEx
+            );
         }
 
         #endregion
@@ -440,7 +395,7 @@ namespace DMicroservices.DataAccess.Redis
             );
         }
 
-
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp ScanKeysByPattern methoduna geçiş yapınız!")]
         public List<RedisKey> GetAllKeys(bool isThrowEx)
         {
             return ExecuteRedisOperation(
@@ -461,6 +416,197 @@ namespace DMicroservices.DataAccess.Redis
             ) ?? new List<RedisKey>();
         }
 
+        #region Scan Pattern operasyonları
+
+        public IEnumerable<RedisKey> ScanKeysByPattern(string pattern, int databaseNum = -1, int pageSize = 250)
+        {
+            lock (_circuitLock)
+            {
+                if (_isCircuitOpen)
+                {
+                    if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
+                    {
+                        return Enumerable.Empty<RedisKey>();
+                    }
+                    _lastCircuitOpenTime = DateTime.UtcNow;
+                }
+            }
+
+            var connection = GetConnection();
+            if (connection == null)
+            {
+                lock (_circuitLock)
+                {
+                    if (!_isCircuitOpen)
+                    {
+                        _isCircuitOpen = true;
+                        _lastCircuitOpenTime = DateTime.UtcNow;
+                    }
+                }
+                return Enumerable.Empty<RedisKey>();
+            }
+
+            var server = connection.GetServer(connection.GetEndPoints().First());
+            return ScanKeysImplementation(server, pattern, databaseNum, pageSize);
+        }
+
+        private IEnumerable<RedisKey> ScanKeysImplementation(IServer server, string pattern, int databaseNum, int pageSize)
+        {
+            IEnumerator<RedisKey> enumerator = null;
+            try
+            {
+                enumerator = server.Keys(databaseNum, $"*{pattern}*", pageSize).GetEnumerator();
+                bool hasNext = true;
+
+                while (hasNext)
+                {
+                    try
+                    {
+                        hasNext = enumerator.MoveNext();
+                    }
+                    catch (Exception ex) when (ex is RedisConnectionException || ex is RedisTimeoutException)
+                    {
+                        lock (_circuitLock)
+                        {
+                            if (!_isCircuitOpen)
+                            {
+                                LogError("Redis key scan yapılırken bağlantı koptu, bağlantı koruması devreye alınıyor!", ex);
+                                _isCircuitOpen = true;
+                                _lastCircuitOpenTime = DateTime.UtcNow;
+                            }
+                        }
+                        yield break;
+                    }
+
+                    if (hasNext)
+                    {
+                        if (_isCircuitOpen)
+                        {
+                            lock (_circuitLock)
+                            {
+                                if (_isCircuitOpen)
+                                    _isCircuitOpen = false;
+                            }
+                            LogInfo("Redis connection tekrar açıldı, bağlantı koruması devre dışı bırakıldı!");
+                        }
+                        yield return enumerator.Current;
+                    }
+                }
+            }
+            finally
+            {
+                enumerator?.Dispose();
+            }
+        }
+
+        public bool Clear(int databaseNum = -1, bool isThrowEx = true)
+        {
+            var keys = ScanKeysByPattern("*", databaseNum);
+            if (!keys.Any()) return true;
+
+            return DeleteByPattern("*", databaseNum) > 0;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="pattern">* olarak direkt girmeyiniz,redis cevap vermeyı bırakabilir</param>
+        /// <param name="databaseNum">kaçıncı db?</param>
+        /// <param name="scanPageSize">kaçar kaçar db den getirsin</param>
+        /// <param name="deleteBatchSize">kaç belgede bir silmeye gitsin? (örneğin 2000 belge var, 250 250 getirir, 1000 oldugunda 1000 taneyi gidip silme emri verir.)</param>
+        /// <returns></returns>
+        public long DeleteByPattern(string pattern, int databaseNum = -1, int scanPageSize = 250, int deleteBatchSize = 1000, bool isStartWithControl = false)
+        {
+            lock (_circuitLock)
+            {
+                if (_isCircuitOpen)
+                {
+                    if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
+                    {
+                        return 0;
+                    }
+                    else
+                    {
+                        _lastCircuitOpenTime = DateTime.UtcNow;
+                    }
+                }
+            }
+
+            long totalDeletedCount = 0;
+            try
+            {
+                var connection = GetConnection();
+                if (connection == null)
+                {
+                    throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "RedisConnectionu alınamadı!");
+                }
+
+                var server = connection.GetServer(connection.GetEndPoints().First());
+                var database = connection.GetDatabase(databaseNum);
+
+                var keysInChunk = new List<RedisKey>(deleteBatchSize);
+                foreach (var key in server.Keys(databaseNum, $"*{pattern}*", pageSize: scanPageSize))
+                {
+                    if (isStartWithControl)
+                    {
+                        if (key.ToString().StartsWith(pattern))
+                        {
+                            keysInChunk.Add(key);
+                        }
+                    }
+                    else
+                    {
+                        keysInChunk.Add(key);
+                    }
+
+                    if (keysInChunk.Count >= deleteBatchSize)
+                    {
+                        database.KeyDelete(keysInChunk.ToArray());
+                        totalDeletedCount += keysInChunk.Count;
+                        keysInChunk.Clear();
+                    }
+                }
+
+                if (keysInChunk.Count > 0)
+                {
+                    database.KeyDelete(keysInChunk.ToArray());
+                    totalDeletedCount += keysInChunk.Count;
+                }
+
+                if (_isCircuitOpen)
+                {
+                    lock (_circuitLock)
+                    {
+                        if (_isCircuitOpen)
+                        {
+                            _isCircuitOpen = false;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is RedisConnectionException || ex is RedisTimeoutException)
+            {
+                lock (_circuitLock)
+                {
+                    if (!_isCircuitOpen)
+                    {
+                        LogError($"Redis silme yaparken hata aldı! Bağlantı koruma devreye girecek!", ex);
+                        _isCircuitOpen = true;
+                        _lastCircuitOpenTime = DateTime.UtcNow;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"DeleteByPattern methodu çalışırken hata aldı! silme patterni: '{pattern}'.", ex);
+            }
+
+            return totalDeletedCount;
+        }
+
+        #endregion
+
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp ScanKeysByPattern methoduna geçiş yapınız!")]
         public List<RedisKey> GetAllKeys(int databaseNum, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -481,27 +627,7 @@ namespace DMicroservices.DataAccess.Redis
             ) ?? new List<RedisKey>();
         }
 
-        public List<RedisKey> GetAllKeysByLikeOld(string key, bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    try
-                    {
-                        List<RedisKey> keys = _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints().Last()).Keys(pattern: "*").ToList();
-                        return keys.Where(p => p.ToString().Contains(key)).ToList();
-                    }
-                    catch (Exception ex)
-                    {
-                        LogError($"{key}:'ine like eden keyler getirilirken hata aldı! {ex.Message}", ex);
-                        return new List<RedisKey>();
-                    }
-                },
-                key,
-                "GET_KEYS_BY_LIKE_OLD", isThrowException: isThrowEx
-            ) ?? new List<RedisKey>();
-        }
-
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp ScanKeysByPattern methoduna geçiş yapınız!")]
         public List<RedisKey> GetAllKeysByLike(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -522,26 +648,7 @@ namespace DMicroservices.DataAccess.Redis
             ) ?? new List<RedisKey>();
         }
 
-        public List<RedisKey> GetAllKeysByLikeOld(string key, int databaseNum, bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    try
-                    {
-                        List<RedisKey> keys = _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints().Last()).Keys(databaseNum, pattern: "*").ToList();
-                        return keys.Where(p => p.ToString().Contains(key)).ToList();
-                    }
-                    catch (Exception ex)
-                    {
-                        LogError($"{key}:'ine like eden keyler getirilirken hata aldı! {ex.Message}", ex);
-                        return new List<RedisKey>();
-                    }
-                }, $"DB{databaseNum}:{key}",
-               "GET_KEYS_BY_LIKE_OLD", isThrowException: isThrowEx
-           ) ?? new List<RedisKey>();
-        }
-
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp ScanKeysByPattern methoduna geçiş yapınız!")]
         public List<RedisKey> GetAllKeysByLike(string key, int databaseNum, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -562,6 +669,7 @@ namespace DMicroservices.DataAccess.Redis
            ) ?? new List<RedisKey>();
         }
 
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp ScanKeysByPattern methoduna geçiş yapınız!")]
         public bool DeleteByKeyLike(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -581,10 +689,12 @@ namespace DMicroservices.DataAccess.Redis
                 },
                 key,
                 "DELETE_BY_LIKE",
+                -1,
                 isThrowEx
             );
         }
 
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp DeleteByPattern methoduna geçiş yapınız!")]
         public bool DeleteByKeyLikeOld(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -603,11 +713,11 @@ namespace DMicroservices.DataAccess.Redis
                     return false;
                 },
                 key,
-                "DELETE_BY_LIKE_OLD", isThrowEx
+                "DELETE_BY_LIKE_OLD", -1, isThrowEx
             );
         }
 
-
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır! Kullanımdan kaldırıp DeleteByPattern methoduna geçiş yapınız!")]
         public bool DeleteByPrefix(string prefix, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -627,78 +737,8 @@ namespace DMicroservices.DataAccess.Redis
                 },
                 prefix,
                 "DELETE_BY_PREFIX",
-                 isThrowEx
+                 -1, isThrowEx
             );
-        }
-
-        public bool DeleteByPrefixOld(string prefix, bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    List<RedisKey> keys = GetAllKeys(isThrowEx);
-                    var matchingKeys = keys.Where(p => p.ToString().StartsWith(prefix)).ToList();
-                    if (matchingKeys.Any())
-                    {
-                        foreach (var matchingKey in matchingKeys)
-                        {
-                            db.KeyDelete(matchingKey);
-                        }
-                        return true;
-                    }
-                    return false;
-                },
-                prefix,
-                "DELETE_BY_PREFIX_OLD",
-                isThrowEx
-
-            );
-        }
-
-        public bool Clear(bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    var keys = GetAllKeys(isThrowEx);
-                    if (keys.Any())
-                    {
-                        foreach (var key in keys)
-                        {
-                            db.KeyDelete(key);
-                        }
-                        return true;
-                    }
-                    return false;
-                },
-                "ALL_KEYS",
-                "CLEAR"
-            );
-        }
-
-        public Dictionary<string, TimeSpan?> GetAllKeyTime(bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    Dictionary<string, TimeSpan?> keyExpireTime = new Dictionary<string, TimeSpan?>();
-                    List<RedisKey> keys = GetAllKeys(isThrowEx);
-                    foreach (var key in keys)
-                    {
-                        try
-                        {
-                            keyExpireTime.Add(key, db.KeyTimeToLive(key));
-                        }
-                        catch (Exception ex)
-                        {
-                            LogError($"GetAllKeyTime Time ile tüm keylerin görüntülenmesinde {key} için hata aldı: {ex.Message}", ex);
-                        }
-                    }
-                    return keyExpireTime;
-                },
-                "*",
-                "GET_ALL_KEY_TIME", isThrowException: isThrowEx
-            ) ?? new Dictionary<string, TimeSpan?>();
         }
 
         public TimeSpan? GetKeyTime(string key, bool isThrowEx = true)
@@ -753,66 +793,23 @@ namespace DMicroservices.DataAccess.Redis
             return true;
         }
 
+        [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır!(Thread thief/connection timeout vb.) Kullanımdan kaldırıp ExistsByPattern methoduna geçiş yapınız!")]
         public bool ExistsLike(string key, bool isThrowEx = true)
         {
             var keys = GetAllKeysByLike(key, isThrowEx: isThrowEx);
             return keys?.Any() == true;
         }
 
-        public bool ExistsLikeOld(string key, bool isThrowEx = true)
+        public bool ExistsByPattern(string pattern, int databaseNum = -1)
         {
-            var keys = GetAllKeysByLikeOld(key, isThrowEx: isThrowEx);
-            return keys?.Any() == true;
-        }
-
-        public bool ExistsPrefixAndLike(string prefix, List<string> subTextList, bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    List<RedisKey> keys = GetAllKeysByLike(prefix);
-                    var list = keys.Where(p => p.ToString().StartsWith(prefix)).Select(p => p.ToString().Replace(prefix, ""));
-                    return list.Any(p => subTextList.Contains(p));
-                },
-                prefix,
-                "EXISTS_PREFIX_AND_LIKE", isThrowException: isThrowEx
-            );
-        }
-
-        public bool ExistsPrefixAndLikeOld(string prefix, List<string> subTextList, bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db =>
-                {
-                    List<RedisKey> keys = GetAllKeys(isThrowEx);
-                    var list = keys.Where(p => p.ToString().StartsWith(prefix)).Select(p => p.ToString().Replace(prefix, ""));
-                    return list.Any(p => subTextList.Contains(p));
-                },
-                prefix,
-                "EXISTS_PREFIX_AND_LIKE_OLD", isThrowException: isThrowEx
-            );
-        }
-
-        #endregion
-
-        #region Lock Operations
-
-        /// <summary>
-        /// RedLock implementation
-        /// </summary>
-        public RedLockFactory GetLockFactory
-        {
-            get
+            try
             {
-                if (RedLockFactory != null)
-                    return RedLockFactory;
-
-                lock (_lockObjFactory)
-                {
-                    RedLockFactory = RedLockFactory.Create(new List<RedLockMultiplexer>() { _connectionMultiplexer as ConnectionMultiplexer });
-                }
-
-                return RedLockFactory;
+                return ScanKeysByPattern(pattern, databaseNum).Any();
+            }
+            catch (Exception ex)
+            {
+                LogError($"An error occurred in ExistsByPattern for pattern '{pattern}'.", ex);
+                return false;
             }
         }
 
@@ -843,17 +840,10 @@ namespace DMicroservices.DataAccess.Redis
         {
             try
             {
-                LogInfo($"Pod {_containerPodName}: Kapatılıyor! redis aşamalı kapatma işlemi başladı!");
-
-                if (_connectionMultiplexer?.IsConnected == true)
-                {
-                    var db = _connectionMultiplexer.GetDatabase();
-                    db.KeyDelete($"container_registry:{_containerPodName}");
-                }
+                LogInfo($"Pod {_containerPodName}: Kapatılıyor!");
 
                 _connectionMultiplexer?.Close();
                 _connectionMultiplexer?.Dispose();
-                RedLockFactory?.Dispose();
             }
             catch (Exception ex)
             {

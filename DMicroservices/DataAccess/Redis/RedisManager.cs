@@ -11,7 +11,7 @@ using System.Threading;
 
 namespace DMicroservices.DataAccess.Redis
 {
-    public class RedisManager
+    class RedisManager
     {
         private static readonly string _redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 

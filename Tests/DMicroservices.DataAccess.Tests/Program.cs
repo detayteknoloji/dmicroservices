@@ -5,9 +5,11 @@ using DMicroservices.DataAccess.Tests.Models;
 using DMicroservices.DataAccess.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading;
 
 namespace DMicroservices.DataAccess.Tests
 {
@@ -17,12 +19,52 @@ namespace DMicroservices.DataAccess.Tests
         static void Main(string[] args)
         {
 
-            RedisManagerV2.Instance.Get("asd");
-            var aa = RedisManagerV2.Instance.GetLockFactory.CreateLock("test-lock", TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
-            if (aa.IsAcquired)
+            try
+            {
+
+                var a = RedisManagerV2.Instance.Set("abc", "X", isThrowEx: false);
+                List<RedisKey> list = new List<RedisKey>();
+          var aa =      RedisManagerV2.Instance.ExistsByPattern("amin", 8);
+
+
+            }
+            catch (Exception e)
             {
 
             }
+            while (true)
+            {
+                Thread.Sleep(5000);
+            }
+            //RedLockManager.Instance.PrepareConnection();
+
+
+            //try
+            //{
+            //    if(RedLockManager.Instance.TryGetLockFactory(out RedLockFactory factory))
+            //    {
+            //        using (var createdLock = factory.CreateLock("slm", TimeSpan.FromSeconds(5)))
+            //        {
+            //            if (createdLock.IsAcquired)
+            //            {
+            //                Thread.Sleep(10000);
+
+            //            }
+            //        }
+            //    }
+            //    else
+            //    {
+            //        throw new Exception("lock alınamadı");
+            //    }
+
+
+            //}
+            //catch (Exception)
+            //{
+
+            //}
+
+
             var saveCity = new City()
             {
                 Name = "Foo",
