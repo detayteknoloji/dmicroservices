@@ -8,6 +8,10 @@ using System.Linq;
 
 namespace DMicroservices.DataAccess.Redis
 {
+    /// <summary>
+    /// IsThrowEx parametresini dikkate alarak redis işlemleri yapınız. Bağımlılık gerekmiyorsa bilinçli olarak isThrowEx parametresini false işaretleyiniz ve cache yi kullanamadıgınız durumda db den işlem yapınız.
+    /// Kullanılan her isThrowEx:true kalan işlemlerin gerekçeleriyle birlikte açıklanması gerekmektedir.
+    /// </summary>
     public class RedisManagerV2
     {
         private static readonly string _redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
@@ -126,7 +130,7 @@ namespace DMicroservices.DataAccess.Redis
                     {
                         if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
                         {
-                            if (isThrowException) throw new RedisCircuitOpenException($"Redis circuit is open. Operation '{operationName}' was not attempted.");
+                            if (isThrowException) throw new RedisCircuitOpenException($"Redis aşırı bağlantı önleme sistemi aktif halde!. '{operationName}' emri çalıştırılmayacak.");
                             return default;
                         }
 
@@ -158,7 +162,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     if (!_isCircuitOpen)
                     {
-                        LogError($"Container {_containerPodName}: Redis bağlantısı başarısız! OperationName: {operationName}. Connection önleme sistemi devreye giriyor! {_circuitOpenDuration.TotalSeconds} saniye sürecek! Bu saniye boyunca redis connectionu açılmayacaktır.", ex);
+                        LogError($"Container {_containerPodName}: Redis bağlantısı başarısız! OperationName: {operationName}. Aşırı connection önleme sistemi devreye giriyor! {_circuitOpenDuration.TotalSeconds} saniye sürecek! Bu saniye boyunca redis connectionu açılmayacaktır.", ex);
                         _isCircuitOpen = true;
                         _lastCircuitOpenTime = DateTime.UtcNow;
                     }
@@ -169,7 +173,7 @@ namespace DMicroservices.DataAccess.Redis
             }
             catch (Exception ex)
             {
-                LogError($"Container {_containerPodName}: Redis '{key}' ile yapılan {operationName}  işemi başarısız oldu! {ex.Message}", ex);
+                LogError($"Container {_containerPodName}: Redis '{key}' ile yapılan {operationName}  işlemi başarısız oldu! {ex.Message}", ex);
                 if (isThrowException)
                     throw;
             }
@@ -184,6 +188,9 @@ namespace DMicroservices.DataAccess.Redis
         /// <summary>
         /// Redis'ten veri getirir. Redis yoksa null döner
         /// </summary>
+        /// <param name="key">Redisde kayıt edilen key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda null dönüp sessizce devam eder</param>
+        /// <returns>Db de o key de veri varsa string olarak döner, yoksa null döner, eğer isThrowEx false olur ise, db de key varsa bile hata durumunda sessizce devam et(isThrowEx false) olduğu için null döner</returns>
         public string Get(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -198,8 +205,13 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
-        /// Redis'e veri kaydeder. 
+        /// Redise verilen key de string olarak veriyi kayıt eder
         /// </summary>
+        /// <param name="key">Redis'e kayıt edilecek key</param>
+        /// <param name="value">Redis'e verilen key'e karşılık gelecek kayıt edilecek value</param>
+        /// <param name="expireTime">Verinin rediste ne kadar süre tutulacağı ?</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda dbye setlenmezse bile false dönüp sessizce devam eder</param>
+        /// <returns>redise verilen key setlenirse true döner, setlenmezse false döner, isthrowEx false olupta setlenmezse false döner</returns>
         public bool Set(string key, string value, TimeSpan? expireTime = null, bool isThrowEx = true)
         {
             if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
@@ -218,9 +230,13 @@ namespace DMicroservices.DataAccess.Redis
             );
         }
 
+
         /// <summary>
-        /// Key'in varlığını kontrol eder. Redis yoksa false döner.
+        ///  Key'in varlığını kontrol eder. Redis yoksa false döner.
         /// </summary>
+        /// <param name="key">Rediste aranacak key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda veri varsa bile false dönüp sessizce devam eder</param>
+        /// <returns>Key rediste varsa true, yoksa false, isThrowEx kapalı olupta veri olsa bile hata durumunda sessizce devam et denildiği için -> false döner</returns>
         public bool Exists(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -231,8 +247,11 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
-        /// Key'i siler.
+        /// verilen keyi redisten siler.
         /// </summary>
+        /// <param name="key">Redisten silinecek key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda veri db de varsa bile silmeden false dönüp sessizce devam eder</param>
+        /// <returns>Key redisten silinirse true, silinmezse false, isThrowEx kapalı ise hata alıpta silinemezse bile false döner</returns>
         public bool DeleteByKey(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -244,8 +263,15 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
-        /// Object'i serialize ederek Redis'e kaydeder.
+        ///  Object'i serialize ederek Redis'e kaydeder.
+        ///  DİKKAT! MessagePack da reference loop handling aktiftir, yani looplu bir nesne kayıt etmeye izin vermez! loop'lu bir nesne kayıt edecekseniz bilinçli olarak looplu nesneyi null'a çekin.
         /// </summary>
+        /// <typeparam name="T">Kayıt edilecek nesnenin tipi</typeparam>
+        /// <param name="key">Redis'e kayıt edilecek key</param>
+        /// <param name="value">Redis'e verilen key ile kayıt edilen değişkenin değeri</param>
+        /// <param name="expiry">Verinin rediste ne kadar süre tutulacağı ?</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda db ye set edemezse bile false dönüp sessizce devam eder</param>
+        /// <returns>Redis'e setlenip setlenmediğinin bilgisi, isThrowEx kapalı ise setleme yapamasa bile false döner</returns>
         public bool SetSerializeBytes<T>(string key, T value, TimeSpan? expiry = null, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -263,6 +289,10 @@ namespace DMicroservices.DataAccess.Redis
         /// <summary>
         /// Object'i deserialize ederek Redis'ten getirir.
         /// </summary>
+        /// <typeparam name="T">Verilen key in dönüştürüleceği veri tipi</typeparam>
+        /// <param name="key">Redisten getirilecek key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda null dönüp sessizce devam eder</param>
+        /// <returns>Verilen T typesine göre verilen keyin verisini deserialize ederek döner, eğer veri getirilemezse ve isThrowEx açıksa null döner ve sessizce devam eder</returns>
         public T GetDeserializeBytes<T>(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -282,6 +312,13 @@ namespace DMicroservices.DataAccess.Redis
 
         #region Db numarasına göre işlemler
 
+        /// <summary>
+        /// Verilen Key'i verilen db numarasından arayarak getirir.
+        /// </summary>
+        /// <param name="key">rediste aranacak key</param>
+        /// <param name="databaseNum">redisin hangi db sinden aranacaksa o db nin numarası</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda null dönüp sessizce devam eder</param>
+        /// <returns>Db den istenen key'in value'sini döner, isThrowEx false olduğunda veri db de varsa bile hata durumunda throw atma dendiği için null döner</returns>
         public string Get(string key, int databaseNum, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -298,6 +335,15 @@ namespace DMicroservices.DataAccess.Redis
 
         }
 
+        /// <summary>
+        /// Verilen key,value'yi redise verilen db numarasına göre set eder.
+        /// </summary>
+        /// <param name="key">Cache Key</param>
+        /// <param name="value">Cache value</param>
+        /// <param name="databaseNum">Cache db numarası</param>
+        /// <param name="expireTime">Cachenin ne kadar süre db de kalacağı</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda dbye setlenmezse bile false dönüp sessizce devam eder</param>
+        /// <returns>redise verilen key setlenirse true döner, setlenmezse false döner, isthrowEx false olupta setlenmezse false döner</returns>
         public bool Set(string key, string value, int databaseNum, TimeSpan? expireTime = null, bool isThrowEx = true)
         {
             if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
@@ -312,6 +358,13 @@ namespace DMicroservices.DataAccess.Redis
             );
         }
 
+        /// <summary>
+        /// istenen keyi istenen db numarasıyla redisten siler
+        /// </summary>
+        /// <param name="key">silinecek key</param>
+        /// <param name="databaseNum">silinecek db numarası</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda veri db de varsa bile silmeden false dönüp sessizce devam eder</param>
+        /// <returns>Key redisten silinirse true, silinmezse false, isThrowEx kapalı ise hata alıpta silinemezse bile false döner</returns>
         public bool DeleteByKey(string key, int databaseNum, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -326,6 +379,12 @@ namespace DMicroservices.DataAccess.Redis
 
         #region Bulk operasyonlar
 
+        /// <summary>
+        /// Redis'e liste şeklinde veri setler, dictionary nin keyleri redis key, e valuesi ise value'e işaret eder, bulk bir setiniz varsa buradan setleyiniz.
+        /// </summary>
+        /// <param name="bulkInsertList">SEtlenecek bulk liste</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda dbye setlenmezse bile false dönüp sessizce devam eder</param>
+        /// <returns>redise verilen dictionaryler setlenirse true döner, setlenmezse false döner, isthrowEx false olupta setlenmezse false döner</returns>
         public bool Set(Dictionary<string, string> bulkInsertList, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -349,6 +408,13 @@ namespace DMicroservices.DataAccess.Redis
             );
         }
 
+        /// <summary>
+        /// Redis'e liste şeklinde veri setler, dictionary nin keyleri redis key, e valuesi ise value'e işaret eder, bulk bir setiniz varsa buradan setleyiniz.
+        /// </summary>
+        /// <param name="bulkInsertList">SEtlenecek bulk liste</param>
+        /// <param name="databaseNum">Cache db numarası</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda dbye setlenmezse bile false dönüp sessizce devam eder</param>
+        /// <returns>redise verilen dictionaryler setlenirse true döner, setlenmezse false döner, isthrowEx false olupta setlenmezse false döner</returns>
         public bool Set(Dictionary<string, string> bulkInsertList, int databaseNum, bool isThrowEx = true)
         {
             var keyValuePair = bulkInsertList.Select(x => new KeyValuePair<RedisKey, RedisValue>(x.Key, x.Value)).ToArray();
@@ -367,6 +433,12 @@ namespace DMicroservices.DataAccess.Redis
 
         #region Business operasyonları
 
+        /// <summary>
+        /// Redisten istenen keydeki veriyi kalan zamanıyla birlikte getirir
+        /// </summary>
+        /// <param name="key">Rediste aranacak key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda null dönüp sessizce devam eder</param>
+        /// <returns>Db de o key de veri varsa string olarak döner, yoksa null döner, eğer isThrowEx false olur ise, db de key varsa bile hata durumunda sessizce devam et(isThrowEx false) olduğu için null döner</returns>
         public Tuple<TimeSpan?, string> GetWithExpiry(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -380,6 +452,13 @@ namespace DMicroservices.DataAccess.Redis
             );
         }
 
+        /// <summary>
+        /// Object'i deserialize ederek Redis'ten kalan zamanıyla birlikte getirir.
+        /// </summary>
+        /// <typeparam name="T">Verilen key in dönüştürüleceği veri tipi</typeparam>
+        /// <param name="key">Redisten getirilecek key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda null dönüp sessizce devam eder</param>
+        /// <returns>Verilen T typesine göre verilen keyin verisini deserialize ederek Tuple<Timespan?,T> şeklinde döner Item1 -> kalan zamanı TimeSpan nesnesinde döner, Item2 -> getirilecek verinin kendisi, eğer veri getirilemezse ve isThrowEx açıksa null döner ve sessizce devam eder</returns>
         public Tuple<TimeSpan?, T> GetDeserializeBytesWithExpiry<T>(string key, bool isThrowEx = true)
         {
             return ExecuteRedisOperation(
@@ -416,9 +495,21 @@ namespace DMicroservices.DataAccess.Redis
             ) ?? new List<RedisKey>();
         }
 
+        /// <summary>
+        /// Redisteki verilen databaseNum'a göre olan tüm keyleri getirir
+        /// </summary>
+        /// <param name="databaseNum">Cache db numarası</param>
+        /// <param name="pageSize">Redis db den verilerin iç tarafta kaçar kaçar sorgulanacağının sayısıdır, yüksek bir rediskey setlemesi var ise sayıyı 250 nin aşağısına çekiniz.</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda empty list döner sessizce devam eder</param>
+        /// <returns>Verilen redis db numarasındaki tüm keyler dönülür. eğer isThrowEx false ise, hata aldığında db de veri olsa bile boş liste döner.</returns>
+        public IEnumerable<RedisKey> ScanAllKey(int databaseNum = -1, int pageSize = 250, bool isThrowEx = true)
+        {
+            return ScanKeysByPattern("*", databaseNum, pageSize, isThrowEx: isThrowEx);
+        }
+
         #region Scan Pattern operasyonları
 
-        public IEnumerable<RedisKey> ScanKeysByPattern(string pattern, int databaseNum = -1, int pageSize = 250)
+        private IEnumerable<RedisKey> ScanKeysByPattern(string searchKey, int databaseNum = -1, int pageSize = 250, bool isThrowEx = true)
         {
             lock (_circuitLock)
             {
@@ -426,6 +517,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
                     {
+                        if (isThrowEx) throw new RedisCircuitOpenException($"Redis aşırı bağlantı koruması açık!. ScanKeysByPattern için aradığınız  '{searchKey}' değer 30 saniye boyunca getirilmeyecek.");
                         return Enumerable.Empty<RedisKey>();
                     }
                     _lastCircuitOpenTime = DateTime.UtcNow;
@@ -443,19 +535,20 @@ namespace DMicroservices.DataAccess.Redis
                         _lastCircuitOpenTime = DateTime.UtcNow;
                     }
                 }
+                if (isThrowEx) throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Redis connectionu elde edilemedi!");
                 return Enumerable.Empty<RedisKey>();
             }
 
             var server = connection.GetServer(connection.GetEndPoints().First());
-            return ScanKeysImplementation(server, pattern, databaseNum, pageSize);
+            return ScanKeysImplementation(server, searchKey, databaseNum, pageSize, isThrowEx);
         }
 
-        private IEnumerable<RedisKey> ScanKeysImplementation(IServer server, string pattern, int databaseNum, int pageSize)
+        private IEnumerable<RedisKey> ScanKeysImplementation(IServer server, string searchKey, int databaseNum, int pageSize, bool isThrowEx)
         {
             IEnumerator<RedisKey> enumerator = null;
             try
             {
-                enumerator = server.Keys(databaseNum, $"*{pattern}*", pageSize).GetEnumerator();
+                enumerator = server.Keys(databaseNum, searchKey, pageSize).GetEnumerator();
                 bool hasNext = true;
 
                 while (hasNext)
@@ -470,11 +563,16 @@ namespace DMicroservices.DataAccess.Redis
                         {
                             if (!_isCircuitOpen)
                             {
-                                LogError("Redis key scan yapılırken bağlantı koptu, bağlantı koruması devreye alınıyor!", ex);
                                 _isCircuitOpen = true;
                                 _lastCircuitOpenTime = DateTime.UtcNow;
                             }
                         }
+
+                        if (isThrowEx)
+                        {
+                            throw new Exception("Redis verileri scan ederken hata aldı! connection veya timeout almış olabilir.", ex);
+                        }
+
                         yield break;
                     }
 
@@ -482,13 +580,10 @@ namespace DMicroservices.DataAccess.Redis
                     {
                         if (_isCircuitOpen)
                         {
-                            lock (_circuitLock)
-                            {
-                                if (_isCircuitOpen)
-                                    _isCircuitOpen = false;
-                            }
-                            LogInfo("Redis connection tekrar açıldı, bağlantı koruması devre dışı bırakıldı!");
+                            lock (_circuitLock) { if (_isCircuitOpen) _isCircuitOpen = false; }
                         }
+                        LogInfo("Redis connection tekrar açıldı, bağlantı koruması devre dışı bırakıldı!");
+
                         yield return enumerator.Current;
                     }
                 }
@@ -499,23 +594,63 @@ namespace DMicroservices.DataAccess.Redis
             }
         }
 
+        /// <summary>
+        /// Verilen database numarasındaki tüm keyleri siler
+        /// </summary>
+        /// <param name="databaseNum">Redis Db numarası</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda false dönüp sessizce devam eder</param>
+        /// <returns>Keyler redisten silinirse true, silinmezse false, isThrowEx kapalı ise hata alıpta silinemezse bile false döner</returns>
         public bool Clear(int databaseNum = -1, bool isThrowEx = true)
         {
-            var keys = ScanKeysByPattern("*", databaseNum);
-            if (!keys.Any()) return true;
-
-            return DeleteByPattern("*", databaseNum) > 0;
+            return DeleteByPattern("*", databaseNum, isThrowEx: isThrowEx) > 0;
         }
 
         /// <summary>
-        /// 
+        /// verilen redis database numarasına göre, searchKeyText olarak verilen değeri contains(*searchKeyText*) ederek arar. 
         /// </summary>
-        /// <param name="pattern">* olarak direkt girmeyiniz,redis cevap vermeyı bırakabilir</param>
-        /// <param name="databaseNum">kaçıncı db?</param>
-        /// <param name="scanPageSize">kaçar kaçar db den getirsin</param>
-        /// <param name="deleteBatchSize">kaç belgede bir silmeye gitsin? (örneğin 2000 belge var, 250 250 getirir, 1000 oldugunda 1000 taneyi gidip silme emri verir.)</param>
-        /// <returns></returns>
-        public long DeleteByPattern(string pattern, int databaseNum = -1, int scanPageSize = 250, int deleteBatchSize = 1000, bool isStartWithControl = false)
+        /// <param name="searchKeyText">rediste aranacak key</param>
+        /// <param name="databaseNum">redisin hangi db sinde aranacağı</param>
+        /// <param name="pageSize">arama yaparken kaçar kaçar arama yapacak ? büyük bir veri araması yapacağınızın öngörüsü varsa bu değeri 250 nin altına düşürün, örneğin 3000 key içerisinde bu vereceğiniz *searchKeyText* değerinin olabileceğini düşünüyorsanız 250 in altına düşürmelisiniz ve performans değerlendirmesi yapmalısınız</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda boş liste dönüp sessizce devam eder</param>
+        /// <returns>verilen searchKeyText e uyan rediskeyleri döner</returns>
+        public IEnumerable<RedisKey> ScanKeysContaining(string searchKeyText, int databaseNum = -1, int pageSize = 250, bool isThrowEx = true)
+        {
+            return ScanKeysByPattern($"*{searchKeyText}*", databaseNum, pageSize, isThrowEx: isThrowEx);
+        }
+
+        /// <summary>
+        /// verilen redis database numarasına göre, searchKeyText olarak verilen değeri startwith(searchKeyText*) ederek arar. 
+        /// </summary>
+        /// <param name="searchKeyText">rediste aranacak key</param>
+        /// <param name="databaseNum">redisin hangi db sinde aranacağı</param>
+        /// <param name="pageSize">arama yaparken kaçar kaçar arama yapacak ? büyük bir veri araması yapacağınızın öngörüsü varsa bu değeri 250 nin altına düşürün, örneğin 3000 key içerisinde bu vereceğiniz searchKeyText* değerinin olabileceğini düşünüyorsanız 250 in altına düşürmelisiniz ve performans değerlendirmesi yapmalısınız</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda boş liste dönüp sessizce devam eder</param>
+        /// <returns>verilen searchKeyText ile başlayan rediskeyleri döner</returns>
+
+        public IEnumerable<RedisKey> ScanKeysStartingWith(string prefix, int databaseNum = -1, int pageSize = 250, bool isThrowEx = true)
+        {
+            return ScanKeysByPattern($"{prefix}*", databaseNum, pageSize, isThrowEx: isThrowEx);
+        }
+
+        /// <summary>
+        /// todo: 'user:????:profile' karmaşık denenler içindir, ihtyiyaç olursa public yapalım.
+        /// </summary>
+        private IEnumerable<RedisKey> ScanKeysWithAdvancedPattern(string rawRedisPattern, int databaseNum = -1, int pageSize = 250, bool isThrowEx = true)
+        {
+            return ScanKeysByPattern(rawRedisPattern, databaseNum, pageSize, isThrowEx);
+        }
+
+        /// <summary>
+        /// Verilen desene uyan tüm keyleri Redis'ten siler.
+        /// </summary>
+        /// <param name="searchKey">Silinecek key yapisi, default olarak contains ederek siler örneğin (*LockItems*) </param>
+        /// <param name="databaseNum">Db numarası</param>
+        /// <param name="scanPageSize">Redisten silinmek üzere kaçar kaçar veri getirileceğinin sayısı</param>
+        /// <param name="deleteBatchSize">Db den kaçar kaçar silinme yapılacağının sayısı</param>
+        /// <param name="isStartWithControl">True ise 'pattern*' StartWith ile, false ise '*pattern*' contains şeklinde arama yapılır</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda 0 dönüp sessizce devam eder</param>
+        /// <returns>Silinen toplam sayıyı döner</returns>
+        public long DeleteByPattern(string searchKey, int databaseNum = -1, int scanPageSize = 250, int deleteBatchSize = 1000, bool isStartWithControl = false, bool isThrowEx = true)
         {
             lock (_circuitLock)
             {
@@ -523,6 +658,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
                     {
+                        if (isThrowEx) throw new RedisCircuitOpenException($"Redis aşırı bağlantı koruması açık!. DeleteByPattern için aradığınız  '{searchKey}' değer 30 saniye boyunca getirilmeyecek.");
                         return 0;
                     }
                     else
@@ -538,26 +674,20 @@ namespace DMicroservices.DataAccess.Redis
                 var connection = GetConnection();
                 if (connection == null)
                 {
-                    throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "RedisConnectionu alınamadı!");
+                    throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Redis connectionu açılamadı");
                 }
 
                 var server = connection.GetServer(connection.GetEndPoints().First());
                 var database = connection.GetDatabase(databaseNum);
 
+                string scanPattern = isStartWithControl ? $"{searchKey}*" : $"*{searchKey}*";
+
+                var keysToProcess = ScanKeysByPattern(scanPattern, databaseNum, scanPageSize, isThrowEx);
+
                 var keysInChunk = new List<RedisKey>(deleteBatchSize);
-                foreach (var key in server.Keys(databaseNum, $"*{pattern}*", pageSize: scanPageSize))
+                foreach (var key in keysToProcess)
                 {
-                    if (isStartWithControl)
-                    {
-                        if (key.ToString().StartsWith(pattern))
-                        {
-                            keysInChunk.Add(key);
-                        }
-                    }
-                    else
-                    {
-                        keysInChunk.Add(key);
-                    }
+                    keysInChunk.Add(key);
 
                     if (keysInChunk.Count >= deleteBatchSize)
                     {
@@ -580,11 +710,12 @@ namespace DMicroservices.DataAccess.Redis
                         if (_isCircuitOpen)
                         {
                             _isCircuitOpen = false;
+                            LogInfo("Redis connection tekrar açıldı, bağlantı koruması devre dışı bırakıldı!");
                         }
                     }
                 }
             }
-            catch (Exception ex) when (ex is RedisConnectionException || ex is RedisTimeoutException)
+            catch (Exception ex) when (ex is RedisConnectionException || ex is RedisTimeoutException || ex is RedisCircuitOpenException)
             {
                 lock (_circuitLock)
                 {
@@ -595,10 +726,12 @@ namespace DMicroservices.DataAccess.Redis
                         _lastCircuitOpenTime = DateTime.UtcNow;
                     }
                 }
+                if (isThrowEx) throw;
             }
             catch (Exception ex)
             {
-                LogError($"DeleteByPattern methodu çalışırken hata aldı! silme patterni: '{pattern}'.", ex);
+                LogError($"DeleteByPattern metohdunda, beklenmeyen hata!  '{searchKey}'.", ex);
+                if (isThrowEx) throw;
             }
 
             return totalDeletedCount;
@@ -741,24 +874,32 @@ namespace DMicroservices.DataAccess.Redis
             );
         }
 
-        public TimeSpan? GetKeyTime(string key, bool isThrowEx = true)
-        {
-            return ExecuteRedisOperation(
-                db => db.KeyTimeToLive(key),
-                key,
-                "GET_KEY_TIME", isThrowException: isThrowEx
-            );
-        }
-
         #endregion
 
         #region Exists and Conditional Operations
 
+        /// <summary>
+        /// Verilen key'in Redis'te var olup olmadığını kontrol eder ve varsa değerini getirir.
+        /// </summary>
+        /// <param name="key">Redis'te aranacak key</param>
+        /// <param name="obj">Key bulunursa değeri bu parametreye setlenir, bulunamazsa null döner</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya exception atıp atmayacağı</param>
+        /// <returns>Key bulunursa true, bulunamazsa false döner</retu
         public bool GetIfExists(string key, out string obj, bool isThrowEx = true)
         {
             obj = Get(key, isThrowEx);
             return (obj != null);
         }
+
+        /// <summary>
+        /// Verilen key'in Redis'te var olup olmadığını kontrol eder ve varsa belirtilen tipe convert ederek getirir.
+        /// Key bulunamazsa veya dönüştürülemezse redisten silinir.
+        /// </summary>
+        /// <typeparam name="T">Dönüştürülecek nesnenin tipi</typeparam>
+        /// <param name="key">Redis'te aranacak key</param>
+        /// <param name="obj">Key bulunursa ve dönüştürülebilirse bu parametreye setlenir, bulunamazsa null setlenir</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya exception atıp atmayacağı?</param>
+        /// <returns>Key bulunur ve convert edilebilirse true, bulunamaz veya convert edilemezse false</returns>
 
         public bool GetIfExists<T>(string key, out T obj, bool isThrowEx = true) where T : class
         {
@@ -771,6 +912,16 @@ namespace DMicroservices.DataAccess.Redis
             return true;
         }
 
+        /// <summary>
+        /// Verilen key'in Redis'te var olup olmadığını kontrol eder, varsa kalan süre bilgisiyle birlikte belirtilen tipe convert ederek getirir.
+        /// Key bulunamazsa veya dönüştürülemezse Redis'ten silinir.
+        /// </summary>
+        /// <typeparam name="T">Dönüştürülecek nesnenin tipi</typeparam>
+        /// <param name="key">Redis'te aranacak key</param>
+        /// <param name="obj">Key bulunursa ve dönüştürülebilirse Tuple olarak (süre bilgisi, nesne) şeklinde bu parametreye setlenir</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya exception  atıp atmayacağı ?</param>
+        /// <returns>Key bulunur ve convert edilebilirse true, bulunamaz veya convert edilemezse false</returns>
+
         public bool GetIfExistsWithExpiry<T>(string key, out Tuple<TimeSpan?, T> obj, bool isThrowEx = true) where T : class
         {
             obj = GetDeserializeBytesWithExpiry<T>(key, isThrowEx);
@@ -782,6 +933,14 @@ namespace DMicroservices.DataAccess.Redis
             return true;
         }
 
+        /// <summary>
+        /// Verilen key'in Redis'te var olup olmadığını kontrol eder ve varsa object tipinde getirir.
+        /// Key bulunamazsa Redis'ten silinir.
+        /// </summary>
+        /// <param name="key">Redis'te aranacak key</param>
+        /// <param name="obj">Key bulunursa bu parametreye setlenir, bulunamazsa null setlenir</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya exception atıp atmayacağı</param>
+        /// <returns>Key bulunursa true, bulunamazsa false döner</returns>
         public bool GetIfExistsObj(string key, out object obj, bool isThrowEx = true)
         {
             obj = Get(key, isThrowEx: isThrowEx);
@@ -793,38 +952,36 @@ namespace DMicroservices.DataAccess.Redis
             return true;
         }
 
+        /// <summary>
+        /// Verilen desene uyan herhangi bir key'in Redis'te var olup olmadığını kontrol eder.
+        /// default olarak *KEY* CONTAINS olarak arar, isStartWithControl açılırsa StartWith olarak arar, içeride aranan veri sayısına göre performans sorunları oluşturabilir, bu yüzden dikkatli kullanılmalıdır.
+        /// </summary>
+        /// <param name="searchKey">Aranacak veri stringi</param>
+        /// <param name="databaseNum">Hangi Redis veritabanında arama yapılacağı</param>
+        /// <param name="pageSize">Redisten kaçar kaçar arama yapacağı</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya exception fırlatılsın mı?</param>
+        /// <param name="isStartWithControl">True ise searchKey ile başlayan keyler için, false ise searchKey içeren keyler için arama yapar</param>
+        /// <returns>searchKey'e uyan herhangi bir key bulunursa true, bulunamazsa false döner</returns>
+        public bool ExistsByPattern(string searchKey, int databaseNum = -1, int pageSize = 250, bool isThrowEx = true, bool isStartWithControl = false)
+        {
+            try
+            {
+                if (isStartWithControl)
+                    return ScanKeysStartingWith(searchKey, databaseNum, pageSize: pageSize, isThrowEx: isThrowEx).Any();
+                return ScanKeysContaining(searchKey, databaseNum, pageSize: pageSize, isThrowEx: isThrowEx).Any();
+            }
+            catch (Exception ex)
+            {
+                LogError($"ExistsByPattern methodunda Beklenmeyen hata '{searchKey}'.", ex);
+                return false;
+            }
+        }
+
         [Obsolete("Redis sunucusunun cevap vermemesine sebep olmaktadır!(Thread thief/connection timeout vb.) Kullanımdan kaldırıp ExistsByPattern methoduna geçiş yapınız!")]
         public bool ExistsLike(string key, bool isThrowEx = true)
         {
             var keys = GetAllKeysByLike(key, isThrowEx: isThrowEx);
             return keys?.Any() == true;
-        }
-
-        public bool ExistsByPattern(string pattern, int databaseNum = -1)
-        {
-            try
-            {
-                return ScanKeysByPattern(pattern, databaseNum).Any();
-            }
-            catch (Exception ex)
-            {
-                LogError($"An error occurred in ExistsByPattern for pattern '{pattern}'.", ex);
-                return false;
-            }
-        }
-
-        #endregion
-
-        #region Serialization
-
-        public byte[] Serialize<T>(T obj)
-        {
-            return MessagePack.MessagePackSerializer.Serialize<T>(obj);
-        }
-
-        public T Deserialize<T>(byte[] obj)
-        {
-            return MessagePack.MessagePackSerializer.Deserialize<T>(obj);
         }
 
         #endregion

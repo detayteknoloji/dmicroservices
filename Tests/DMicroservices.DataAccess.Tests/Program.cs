@@ -21,7 +21,6 @@ namespace DMicroservices.DataAccess.Tests
 
             try
             {
-
                 var a = RedisManagerV2.Instance.Set("abc", "X", isThrowEx: false);
                 List<RedisKey> list = new List<RedisKey>();
           var aa =      RedisManagerV2.Instance.ExistsByPattern("amin", 8);
