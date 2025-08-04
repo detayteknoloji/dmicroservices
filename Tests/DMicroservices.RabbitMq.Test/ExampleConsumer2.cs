@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using DMicroservices.DataAccess.Redis;
 using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Consumer;
 using RabbitMQ.Client.Events;
@@ -16,12 +17,21 @@ namespace DMicroservices.RabbitMq.Test
 
         private void DataReceived(ExampleModel model, BasicDeliverEventArgs e)
         {
-            Console.WriteLine(model.Message);
-
-            for (int i = 0; i < 10; i++)
+            try
             {
-                Console.WriteLine(i);
-                Thread.Sleep(300);
+                var resultLockFact = RedLockManager.Instance.TryGetLockFactory(out var factory);
+                using (var createdLock = factory.CreateLock("res", new TimeSpan(0, 0, 1)))
+                {
+                    var isAck = createdLock.IsAcquired;
+                    if (isAck)
+                    {
+
+                    }
+                }
+                var result = RedisManagerV2.Instance.Set("testkey2", "test", isThrowEx: false);
+            }
+            catch (OperationCanceledException ex)
+            {
             }
 
             //Send Ack.

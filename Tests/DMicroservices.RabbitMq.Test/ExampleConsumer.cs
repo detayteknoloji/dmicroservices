@@ -1,4 +1,5 @@
-﻿using DMicroservices.RabbitMq.Base;
+﻿using DMicroservices.DataAccess.Redis;
+using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Consumer;
 using DMicroservices.Utils.Logger;
 using RabbitMQ.Client.Events;
@@ -28,20 +29,21 @@ namespace DMicroservices.RabbitMq.Test
         {
             try
             {
-                TestData = new Test
+                var resultLockFact = RedLockManager.Instance.TryGetLockFactory(out var factory);
+                using (var createdLock = factory.CreateLock("res", new TimeSpan(0, 0, 1)))
                 {
-                    Data = sender.Message,
-                    ConsumerTag = e.ConsumerTag
-                };
-                Thread.Sleep(10000);
-                if (TestData.Data != sender.Message)
-                {
-                    Console.WriteLine($"err {TestData.Data} != {sender.Message} => {TestData.ConsumerTag} {e.ConsumerTag}");
+                    var isAck = createdLock.IsAcquired;
+                    if(isAck)
+                    {
+
+                    }
                 }
+                var result = RedisManagerV2.Instance.Set("testkey", "test", isThrowEx: false);
             }
             catch (OperationCanceledException ex)
             {
             }
+
         }
     }
 
@@ -97,7 +99,7 @@ namespace DMicroservices.RabbitMq.Test
                 {
                     CancellationTokenSource = new CancellationTokenSource();
                     OnBeforeExecution(stepExecution, e);
-                    
+
                     var task = Task.Run(() => Execute(stepExecution, e), CancellationTokenSource.Token);
                     task.ContinueWith(p =>
                     {
