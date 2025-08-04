@@ -11,6 +11,7 @@ using System.Threading;
 
 namespace DMicroservices.DataAccess.Redis
 {
+    [Obsolete("RedisManagerV2 Kullanınız! Kullanımdan 2026.08 'de kaldırılacaktır! Detaylı Bilgi için -> githubcommitmesaj")]
     public class RedisManager
     {
         private static readonly string _redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");

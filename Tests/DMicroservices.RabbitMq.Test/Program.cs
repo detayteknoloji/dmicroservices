@@ -1,4 +1,5 @@
-﻿using DMicroservices.RabbitMq.Base;
+﻿using DMicroservices.DataAccess.Redis;
+using DMicroservices.RabbitMq.Base;
 using DMicroservices.RabbitMq.Model;
 using DMicroservices.RabbitMq.Producer;
 using System;
@@ -13,7 +14,9 @@ namespace DMicroservices.RabbitMq.Test
     {
         static void Main(string[] args)
         {
+            RedLockManager.Instance.PrepareConnection();
             ConsumerRegistry.Instance.Register(typeof(ExampleConsumer));
+            ConsumerRegistry.Instance.Register(typeof(ExampleConsumer2));
 
           
             
