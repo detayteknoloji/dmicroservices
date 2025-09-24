@@ -453,6 +453,25 @@ namespace DMicroservices.DataAccess.Redis
         }
 
         /// <summary>
+        /// Redisten db numarasına göre istenen keydeki veriyi kalan zamanıyla birlikte getirir
+        /// </summary>
+        /// <param name="key">Rediste aranacak key</param>
+        /// <param name="isThrowEx">Hata durumunda dışarıya atsın mı ? True olduğunda dışarıya hatayı çıkarır, false olduğunda null dönüp sessizce devam eder</param>
+        /// <returns>Db de o key de veri varsa string olarak döner, yoksa null döner, eğer isThrowEx false olur ise, db de key varsa bile hata durumunda sessizce devam et(isThrowEx false) olduğu için null döner</returns>
+        public Tuple<TimeSpan?, string> GetWithExpiry(string key, int databaseNum, bool isThrowEx = true)
+        {
+            return ExecuteRedisOperation(
+                db =>
+                {
+                    var cacheValue = db.StringGetWithExpiry(key);
+                    return new Tuple<TimeSpan?, string>(cacheValue.Expiry, cacheValue.Value.HasValue ? cacheValue.Value.ToString() : null);
+                },
+                key,
+                "GET_WITH_EXPIRY", databaseNum, isThrowException: isThrowEx
+            );
+        }
+
+        /// <summary>
         /// Object'i deserialize ederek Redis'ten kalan zamanıyla birlikte getirir.
         /// </summary>
         /// <typeparam name="T">Verilen key in dönüştürüleceği veri tipi</typeparam>
