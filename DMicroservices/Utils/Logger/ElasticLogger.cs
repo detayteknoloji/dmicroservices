@@ -342,7 +342,7 @@ namespace DMicroservices.Utils.Logger
             var loggerConfiguration = new LoggerConfiguration()
               .MinimumLevel.Verbose()
               .WriteTo.File($"{combinedPath}-.txt", fileSizeLimitBytes: 40971520, rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true,
-              outputTemplate: outputTemplate);
+              outputTemplate: outputTemplate, shared: true);
 
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POD_NAME")))
                 loggerConfiguration.Enrich.WithProperty("PodName", Environment.GetEnvironmentVariable("POD_NAME"));

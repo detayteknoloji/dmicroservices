@@ -73,7 +73,7 @@ namespace DMicroservices.DataAccess.Redis
 
                 try
                 {
-                    LogInfo("Redis Bağlantısı kurmak istenildi, yeni connection açılmak veya eski connection ezilmek züere multiplexer acilacak");
+                    LogInfo("Redis Bağlantısı kurmak istenildi, yeni connection açılmak veya eski connection ezilmek üzere multiplexer acilacak");
                     var options = ConfigurationOptions.Parse(_redisUrl);
                     options.AbortOnConnectFail = false;
                     options.ClientName = $"Container-{_containerPodName}";
@@ -601,7 +601,6 @@ namespace DMicroservices.DataAccess.Redis
                         {
                             lock (_circuitLock) { if (_isCircuitOpen) _isCircuitOpen = false; }
                         }
-                        LogInfo("Redis connection tekrar açıldı, bağlantı koruması devre dışı bırakıldı!");
 
                         yield return enumerator.Current;
                     }
