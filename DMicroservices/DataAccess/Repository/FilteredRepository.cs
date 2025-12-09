@@ -112,7 +112,7 @@ namespace DMicroservices.DataAccess.Repository
 
         public void Delete(Expression<Func<T, bool>> predicate, bool forceDelete = false)
         {
-            T model = DbSet.FirstOrDefault(predicate);
+            T model = DbSet.Where(GetFilterExpression()).FirstOrDefault(predicate);
 
             if (model != null)
                 Delete(model, forceDelete);
