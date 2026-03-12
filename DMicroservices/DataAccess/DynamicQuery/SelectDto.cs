@@ -175,11 +175,11 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 queryObject = orderedQueryable;
             }
 
-            if (TakeCount > 0)
-                queryObject = queryObject.Take(SkipCount + TakeCount);
-
             if (SkipCount > 0)
                 queryObject = queryObject.Skip(SkipCount);
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(TakeCount);
 
             return queryObject;
         }
@@ -210,11 +210,11 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 queryObject = orderedQueryable;
             }
 
-            if (TakeCount > 0)
-                queryObject = queryObject.Take(SkipCount + TakeCount);
-
             if (SkipCount > 0)
                 queryObject = queryObject.Skip(SkipCount);
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(TakeCount);
 
             return queryObject;
         }
@@ -245,11 +245,12 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 queryObject = orderedQueryable;
             }
 
-            if (TakeCount > 0)
-                queryObject = queryObject.Take(SkipCount + TakeCount);
-
             if (SkipCount > 0)
                 queryObject = queryObject.Skip(SkipCount);
+
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(TakeCount);
 
             return queryObject;
         }
@@ -280,11 +281,11 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 queryObject = orderedQueryable;
             }
 
-            if (TakeCount > 0)
-                queryObject = queryObject.Take(SkipCount + TakeCount);
-
             if (SkipCount > 0)
                 queryObject = queryObject.Skip(SkipCount);
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(TakeCount);
 
             return queryObject;
         }
@@ -315,10 +316,13 @@ namespace DMicroservices.DataAccess.DynamicQuery
                 queryObject = orderedQueryable;
             }
             int totalCount = queryObject.Count();
-            if (TakeCount > 0)
-                queryObject = queryObject.Take(SkipCount + TakeCount);
+
             if (SkipCount > 0)
                 queryObject = queryObject.Skip(SkipCount);
+
+            if (TakeCount > 0)
+                queryObject = queryObject.Take(TakeCount);
+    
             return Tuple.Create(queryObject, totalCount);
         }
 
@@ -329,14 +333,13 @@ namespace DMicroservices.DataAccess.DynamicQuery
         /// <returns></returns>
         public List<T> SetPager(IQueryable<T> queryableObject)
         {
-            if (TakeCount > 0)
-                queryableObject = queryableObject.Take(SkipCount + TakeCount);
-
-            List<T> queryList = queryableObject.ToList();
             if (SkipCount > 0)
-                queryList = queryList.Skip(SkipCount).ToList();
+                queryableObject = queryableObject.Skip(SkipCount);
 
-            return queryList;
+            if (TakeCount > 0)
+                queryableObject = queryableObject.Take(TakeCount);
+
+            return queryableObject.ToList();
         }
 
         /// <summary>
