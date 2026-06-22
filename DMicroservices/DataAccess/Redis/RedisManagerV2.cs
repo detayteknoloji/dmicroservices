@@ -214,7 +214,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns>redise verilen key setlenirse true döner, setlenmezse false döner, isthrowEx false olupta setlenmezse false döner</returns>
         public bool Set(string key, string value, TimeSpan? expireTime = null, bool isThrowEx = true)
         {
-            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+            if (string.IsNullOrWhiteSpace(key))
                 return false;
 
             return ExecuteRedisOperation(
@@ -346,7 +346,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns>redise verilen key setlenirse true döner, setlenmezse false döner, isthrowEx false olupta setlenmezse false döner</returns>
         public bool Set(string key, string value, int databaseNum, TimeSpan? expireTime = null, bool isThrowEx = true)
         {
-            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+            if (string.IsNullOrWhiteSpace(key))
                 return false;
 
             return ExecuteRedisOperation(
