@@ -6,7 +6,6 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
@@ -63,6 +62,26 @@ namespace DMicroservices.RabbitMq.Consumer
 
         private IModel _rabbitMqChannel;
 
+        /// <summary>
+        // her mesaj geldiğinde mesajı işleyecek sınıf ıcın yeni bir referans türetip türetmeyeceğimize bakarız ki, tek consumerin üzerindeki referansı ezemedığımız(rabbitmq channel kapanıp açıldıgında başka bir mesajın companynosu dataaccessorsleri ezerse halen işlemekte olan step datasının companynosu kayar) datayı izole edelım dıye dinleyen sınıfdan yeni referansla işlem yaparız.
+        /// </summary>
+        protected virtual bool IsolatedExecution => false;
+
+        /// <summary>
+        /// eğerki izolatedexecution açıksa şuanki izolated kim ise onu kapanış anında cancel eder
+        /// </summary>
+        private volatile BasicConsumer<T> _currentExecutor;
+
+        /// <summary>
+        /// eğerki izolatedexecution açıksa şuanki izolated kim ise onu kapanış anında cancel eder
+        /// </summary>
+        private BasicConsumer<T> _listener;
+
+        /// <summary>
+        /// şuan kaç mesaj işleniyorsa o mesajın sayısını tutar işi bittiğinde 0 olması beklenir böylece işi bitmemiş oldugunu anlayıp shutdown/up durumunda bekletme sağlatırız
+        /// </summary>
+        private int _inFlightCount;
+
         private readonly object _stateChangeLockObject = new object();
         private readonly object _shutdownChangeLockObject = new object();
         private readonly ManualResetEventSlim _shutdownWaitHandle = new ManualResetEventSlim(false);
@@ -113,22 +132,37 @@ namespace DMicroservices.RabbitMq.Consumer
 
                 Thread.Sleep(TimeSpan.FromSeconds(10));
 
-                if (invokeCancellationToken && WaitSignalCleanup)
+                // mesaj datareceivedde bitmeden kuyruk öldüyse tekrar dinlemeye o ölü olanın işi bitmeden tekrar başlamaz!!! her 15 saniyede bir mail atalım
+                int drainTimeoutSeconds = 120;
+                string drainTimeoutEnv = Environment.GetEnvironmentVariable("RABBIT_DRAIN_TIMEOUT_SECONDS");
+                if (!string.IsNullOrEmpty(drainTimeoutEnv) && int.TryParse(drainTimeoutEnv, out int drainTimeoutParsed) && drainTimeoutParsed > 0)
+                    drainTimeoutSeconds = drainTimeoutParsed;
+
+                int drainWaitedSeconds = 0;
+                while (Volatile.Read(ref _inFlightCount) > 0)
                 {
-                    int waitTimeoutSeconds = 120; // 5 dakika sinyal bekleme süresi
-                    bool isSignalReceived = _shutdownWaitHandle.Wait(TimeSpan.FromSeconds(waitTimeoutSeconds));
+                    // kuyrugun işi bitene kadar bekletelim. eğerki finally de                 Interlocked.Decrement(ref _inFlightCount); 0 olduysa başarılıdır yada stepbase de SignalShutdownContinue cagırılırsa bekleme erken bitirilir ve kuyruk tekrar dınlenir
+                    _shutdownWaitHandle.Wait(TimeSpan.FromSeconds(1));
+                    drainWaitedSeconds++;
 
-                    if (!isSignalReceived)
+                    if (drainWaitedSeconds % drainTimeoutSeconds == 0 && Volatile.Read(ref _inFlightCount) > 0)
                     {
-                        ElasticLogger.Instance.InfoSpecificIndexFormat(
-                            $"RabbitMqChannelShutdown: Signal beklenirken timeout oluştu! {waitTimeoutSeconds} saniye geçti.",
-                            ConstantString.RABBITMQ_INDEX_FORMAT);
+                        string drainAlertMessage =
+                            $"RabbitMqChannelShutdown: Drain timeout! {drainWaitedSeconds} saniye geçti, in-flight delivery hala bitmedi. Delivery tamamlanmadan kuyruk yeniden dinlenmeyecek! Queue: {_listenQueueName}";
 
+                        ElasticLogger.Instance.InfoSpecificIndexFormat(drainAlertMessage, ConstantString.RABBITMQ_INDEX_FORMAT);
+
+                        try
+                        {
+                            ConsumerAlertNotifier.DrainTimeoutAlert?.Invoke(_listenQueueName, drainAlertMessage);
+                        }
+                        catch (Exception alertEx)
+                        {
+                            ElasticLogger.Instance.ErrorSpecificIndexFormat(alertEx, $"RabbitMqChannelShutdown: Drain timeout alarmı iletilemedi! Queue: {_listenQueueName}", ConstantString.RABBITMQ_INDEX_FORMAT);
+                        }
                     }
-
-                    // Sinyal alındıysa, resetleyelim çünkü tekrar kullanılacak.
-                    _shutdownWaitHandle.Reset();
                 }
+                _shutdownWaitHandle.Reset();
 
                 ConsumerListening = false;
                 if (_dontReinitialize)
@@ -141,30 +175,73 @@ namespace DMicroservices.RabbitMq.Consumer
 
         /// <summary>
         /// Shutdown işlemini bekleten sinyali serbest bırakır.
+        /// Executor üzerinden çağrıldığında sinyal, kanalın sahibi olan listener'a iletilir.
         /// </summary>
         protected void SignalShutdownContinue()
         {
             ElasticLogger.Instance.InfoSpecificIndexFormat(
                         $"RabbitMqCleanup ReceivedSignal: Signal Alındı kilit açıldı.",
                         ConstantString.RABBITMQ_INDEX_FORMAT);
-            _shutdownWaitHandle.Set();
+            (_listener ?? this)._shutdownWaitHandle.Set();
+        }
+
+        /// <summary>
+        /// Consumer, ConsumerRegistrye kayıt edildiğinde yani activator ile yeni instance yarattıgımız anda bir kez çalıştıracağımız methoddur. bunu dinleyen Cron/iş emri kaydı gibi "process başına bir kez" olan işler ctor yerine burada yapılır; IsolatedExecution true olan consumerlerin ctor her yeni mesaj için newleme yapıldığından artık ctorda job activate edilen kuyruklar için burası çalıştırılır, diğer yeni newleme artık burda çalışmaz.
+        /// </summary>
+        public virtual void OnConsumerRegistered()
+        {
         }
 
         private void DocumentConsumerOnReceived(object sender, BasicDeliverEventArgs e)
         {
             string jsonData = null;
+            Interlocked.Increment(ref _inFlightCount);
             try
             {
                 jsonData = Encoding.UTF8.GetString(e.Body.ToArray());
                 var parsedData = JsonConvert.DeserializeObject<T>(jsonData);
-                DataReceivedAction(parsedData, e);
+
+                if (IsolatedExecution)
+                {
+                    // her mesaj için yeni instance türetelimki mesajlar arası companyuno kayması tamamen referansın içinde kalsın.
+                    var executor = (BasicConsumer<T>)Activator.CreateInstance(GetType());
+                    executor.AttachDelivery(this, sender as EventingBasicConsumer);
+
+                    _currentExecutor = executor;
+                    try
+                    {
+                        executor.DataReceivedAction(parsedData, e);
+                    }
+                    finally
+                    {
+                        _currentExecutor = null;
+                    }
+                }
+                else
+                {
+                    DataReceivedAction(parsedData, e);
+                }
             }
             catch (Exception ex)
             {
                 ElasticLogger.Instance.ErrorSpecificIndexFormat(ex, $"DocumentConsumer generic data received exception: {ex.Message}, ConsumerTag {e?.ConsumerTag}", ConstantString.RABBITMQ_INDEX_FORMAT, new System.Collections.Generic.Dictionary<string, object>() { { "Data:", jsonData } });
-                if (_rabbitMqChannel != null)
-                    _rabbitMqChannel.BasicNack(e.DeliveryTag, false, false);
+
+                IModel deliveryChannel = (sender as EventingBasicConsumer)?.Model ?? _rabbitMqChannel;
+                if (deliveryChannel is { IsOpen: true })
+                    deliveryChannel.BasicNack(e.DeliveryTag, false, false);
             }
+            finally
+            {
+                Interlocked.Decrement(ref _inFlightCount);
+            }
+        }
+
+        private void AttachDelivery(BasicConsumer<T> listener, EventingBasicConsumer deliveryConsumer)
+        {
+            _listener = listener;
+            _listenQueueName = listener._listenQueueName;
+            _eventingBasicConsumer = deliveryConsumer ?? listener._eventingBasicConsumer;
+            _rabbitMqChannel = _eventingBasicConsumer?.Model;
         }
 
         protected void BasicAck(ulong deliveryTag, bool multiple)
@@ -309,12 +386,14 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             try
             {
-                var currentType = this.GetType();
+                // IsolatedExecution açıkken gelen her mesaj, executor instancesi üzerinde işlendiğinden;  iptal edilecek CancellationTokenSource da onun üzerindedir eğerki izolated açık degilse thisdir.
+                object target = _currentExecutor ?? this;
+                var currentType = target.GetType();
 
                 var tokenSourceField = currentType.GetField("CancellationTokenSource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (tokenSourceField != null)
                 {
-                    var tokenSourceObj = tokenSourceField.GetValue(this) as CancellationTokenSource;
+                    var tokenSourceObj = tokenSourceField.GetValue(target) as CancellationTokenSource;
                     tokenSourceObj?.Cancel();
                     ElasticLogger.Instance.InfoSpecificIndexFormat($"CancellationTokenSource canceled (field) in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
                 }
@@ -323,7 +402,7 @@ namespace DMicroservices.RabbitMq.Consumer
                     var tokenSourceProperty = currentType.GetProperty("CancellationTokenSource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                     if (tokenSourceProperty != null)
                     {
-                        var tokenSourceObj = tokenSourceProperty.GetValue(this) as CancellationTokenSource;
+                        var tokenSourceObj = tokenSourceProperty.GetValue(target) as CancellationTokenSource;
                         tokenSourceObj?.Cancel();
                         ElasticLogger.Instance.InfoSpecificIndexFormat($"CancellationTokenSource canceled (property) in {currentType.Name}", ConstantString.RABBITMQ_INDEX_FORMAT);
                     }

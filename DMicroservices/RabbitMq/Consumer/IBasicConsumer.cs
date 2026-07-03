@@ -16,5 +16,6 @@ namespace DMicroservices.RabbitMq.Consumer
 
         void ChangePrefetchCount(ushort prefetchCount);
         string GetListenQueueName();
+        void OnConsumerRegistered();
     }
 }

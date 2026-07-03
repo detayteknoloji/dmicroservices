@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Transactions;
+using DMicroservices.DataAccess.Guard;
 using DMicroservices.DataAccess.History;
 using DMicroservices.DataAccess.MongoRepository;
 using DMicroservices.DataAccess.Repository;
@@ -177,6 +178,10 @@ namespace DMicroservices.DataAccess.UnitOfWork
                 !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THROW_UNIT_OF_WORK_ERROR"))
                     ? bool.Parse(Environment.GetEnvironmentVariable("THROW_UNIT_OF_WORK_ERROR"))
                     : false;
+
+            if (UnitOfWorkGuardRegistry.HasGuards)
+                UnitOfWorkGuardRegistry.ValidateEntries(DbContext, FilterColumnName, FilterColumnValue, typeof(T));
+
             int result = -1;
             try
             {
@@ -477,6 +482,12 @@ namespace DMicroservices.DataAccess.UnitOfWork
                 !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THROW_UNIT_OF_WORK_ERROR"))
                     ? bool.Parse(Environment.GetEnvironmentVariable("THROW_UNIT_OF_WORK_ERROR"))
                     : false;
+
+            // Guard ihlali hata yutma mekanizmasına (throwAnError=false) takılmadan
+            // çağırana ulaşmalı; bu yüzden try bloğunun dışında çalıştırılır.
+            if (UnitOfWorkGuardRegistry.HasGuards)
+                UnitOfWorkGuardRegistry.ValidateEntries(DbContext, FilterColumnName, FilterColumnValue, DbContextType);
+
             int result = -1;
             try
             {

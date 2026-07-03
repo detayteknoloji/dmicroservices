@@ -106,6 +106,8 @@ namespace DMicroservices.RabbitMq.Base
             {
                 var consumerObject = (IConsumer)Activator.CreateInstance(consumer);
 
+                consumerObject.OnConsumerRegistered();
+
                 lock (Consumers)
                 {
                     ElasticLogger.Instance.Info("Consumer register new request with: " + consumerKey);
