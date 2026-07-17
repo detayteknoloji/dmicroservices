@@ -238,5 +238,9 @@ namespace DMicroservices.RabbitMq.Consumer
         {
             return _listenQueueName;
         }
+
+        public virtual void OnConsumerRegistered()
+        {
+        }
     }
 }
