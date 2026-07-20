@@ -1,32 +1,39 @@
-﻿using DMicroservices.Utils.Logger;
-using MessagePack;
 using Microsoft.Extensions.Caching.Memory;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading;
-using Microsoft.Extensions.Options;
-using System.Collections;
-using System.Reflection;
 
 namespace DMicroservices.DataAccess.Cache
 {
     public class MemoryCacheManager
     {
-        private IMemoryCache _memoryCache;
+        private readonly IMemoryCache _memoryCache;
         private bool _memoryCacheDisabled = false;
+
+        /// <summary>
+        /// Cachede tutulan keyler
+        /// </summary>
+        private readonly ConcurrentDictionary<string, byte> _keys = new ConcurrentDictionary<string, byte>();
+
+        /// <summary>
+        /// memcachede tutulacak keylerin default ttl değeri
+        /// </summary>
+        private static readonly TimeSpan DefaultExpireTime = TimeSpan.FromSeconds(GetEnvironmentLong("MEMORY_CACHE_DEFAULT_TTL", 600));
+
         #region Singleton Section
 
         private static readonly Lazy<MemoryCacheManager> _instance = new Lazy<MemoryCacheManager>(() => new MemoryCacheManager());
 
         protected MemoryCacheManager()
         {
-
-            _memoryCache = new MemoryCache(new MemoryDistributedCacheOptions()
+            var options = new MemoryCacheOptions()
             {
-                SizeLimit = null
-            });
+                SizeLimit = null,
+                ExpirationScanFrequency = TimeSpan.FromMinutes(1)
+            };
+
+            _memoryCache = new MemoryCache(options);
         }
 
         public static MemoryCacheManager Instance => _instance.Value;
@@ -54,6 +61,7 @@ namespace DMicroservices.DataAccess.Cache
                 return true;
 
             _memoryCache.Remove(key);
+            _keys.TryRemove(key, out _);
             return true;
         }
 
@@ -63,14 +71,16 @@ namespace DMicroservices.DataAccess.Cache
         /// <param name="key"></param>
         public bool DeleteByKeyLike(string key)
         {
-
             if (_memoryCacheDisabled)
                 return true;
 
-            foreach (var keyItem in GetAllKeys())
+            foreach (var keyItem in _keys.Keys.ToList())
             {
                 if (keyItem.StartsWith(key))
+                {
                     _memoryCache.Remove(keyItem);
+                    _keys.TryRemove(keyItem, out _);
+                }
             }
 
             return true;
@@ -84,16 +94,17 @@ namespace DMicroservices.DataAccess.Cache
             if (_memoryCacheDisabled)
                 return true;
 
-            foreach (var key in GetAllKeys())
+            foreach (var key in _keys.Keys.ToList())
             {
                 _memoryCache.Remove(key);
+                _keys.TryRemove(key, out _);
             }
 
             return true;
         }
 
         /// <summary>
-        /// Önbellekte veriyi, verilmişse istenilen süre kadar tutar
+        /// Önbellekte veriyi, verilmişse istenilen süre kadar tutar; süre verilmezse varsayılan yaşam süresi uygulanır.
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
@@ -103,20 +114,16 @@ namespace DMicroservices.DataAccess.Cache
             if (_memoryCacheDisabled)
                 return true;
 
-            if (expireTime.HasValue)
-                _memoryCache.Set(key, value, expireTime.Value);
-            else
-                _memoryCache.Set(key, value);
+            _memoryCache.Set(key, value, CreateEntryOptions(value, expireTime));
+            _keys.TryAdd(key, 0);
 
             return true;
         }
 
         /// <summary>
-        /// Önbellekte veriyi, verilmişse istenilen süre kadar tutar
+        /// Önbellekte verilen listedeki verileri varsayılan yaşam süresiyle tutar.
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
-        /// <param name="expireTime"></param>
+        /// <param name="bulkInsertList"></param>
         public bool Set(Dictionary<string, string> bulkInsertList)
         {
             if (_memoryCacheDisabled)
@@ -124,7 +131,8 @@ namespace DMicroservices.DataAccess.Cache
 
             foreach (var (key, value) in bulkInsertList)
             {
-                _memoryCache.Set(key, value);
+                _memoryCache.Set(key, value, CreateEntryOptions(value, null));
+                _keys.TryAdd(key, 0);
             }
 
             return true;
@@ -140,13 +148,10 @@ namespace DMicroservices.DataAccess.Cache
             if (_memoryCacheDisabled)
                 return true;
 
-            if (expireTime.HasValue)
-                _memoryCache.Set(key, value, expireTime.Value);
-            else
-                _memoryCache.Set(key, value);
+            _memoryCache.Set(key, value, CreateEntryOptions(value, expireTime));
+            _keys.TryAdd(key, 0);
 
-
-            return false;
+            return true;
         }
 
         /// <summary>
@@ -214,18 +219,7 @@ namespace DMicroservices.DataAccess.Cache
                 return null;
             }
 
-            var field = typeof(MemoryCache).GetProperty("EntriesCollection", BindingFlags.NonPublic | BindingFlags.Instance);
-            var collection = field.GetValue(_memoryCache) as ICollection;
-            var items = new List<string>();
-            if (collection != null)
-                foreach (var item in collection)
-                {
-                    var methodInfo = item.GetType().GetProperty("Key");
-                    var val = methodInfo.GetValue(item);
-                    items.Add(val.ToString());
-                }
-
-            return items;
+            return _keys.Keys.ToList();
         }
 
         public void DisableCache()
@@ -235,6 +229,31 @@ namespace DMicroservices.DataAccess.Cache
         public void EnableCache()
         {
             _memoryCacheDisabled = false;
+        }
+
+        private MemoryCacheEntryOptions CreateEntryOptions(object value, TimeSpan? expireTime)
+        {
+            var options = new MemoryCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = expireTime ?? DefaultExpireTime
+            };
+
+            options.RegisterPostEvictionCallback((evictedKey, evictedValue, reason, state) =>
+            {
+                // keyin ttl i bittiğinde dictten de replace oldugu hariç değişssin
+                if (reason != EvictionReason.Replaced)
+                    _keys.TryRemove(evictedKey.ToString(), out _);
+            });
+
+            return options;
+        }
+
+        private static long GetEnvironmentLong(string name, long defaultValue)
+        {
+            string envValue = Environment.GetEnvironmentVariable(name);
+            if (!string.IsNullOrEmpty(envValue) && long.TryParse(envValue, out long parsedValue) && parsedValue > 0)
+                return parsedValue;
+            return defaultValue;
         }
     }
 }
