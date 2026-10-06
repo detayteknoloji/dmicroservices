@@ -532,6 +532,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
                         orderedQueryable = queryable.OrderBy(GetOrderBinaryExpression<uint>(orderItem.Column));
                     break;
                 case TypePropertyEnum.Long:
+                case TypePropertyEnum.Int64:
                     if (orderItem.Descending)
                         orderedQueryable = queryable.OrderByDescending(GetOrderBinaryExpression<long>(orderItem.Column));
                     else
@@ -677,6 +678,7 @@ namespace DMicroservices.DataAccess.DynamicQuery
                             queryable = queryable.ThenBy(GetOrderBinaryExpression<uint>(orderItem.Column));
                         break;
                     case TypePropertyEnum.Long:
+                    case TypePropertyEnum.Int64:
                         if (orderItem.Descending)
                             queryable = queryable.ThenByDescending(GetOrderBinaryExpression<long>(orderItem.Column));
                         else
