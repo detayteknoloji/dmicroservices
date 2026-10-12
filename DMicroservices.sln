@@ -13,6 +13,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMicroservices", "DMicroser
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMicroservices.Utils.Tests", "DMicroservices.Utils.Tests\DMicroservices.Utils.Tests.csproj", "{49480492-5A60-4A9B-A5D9-283F1E38A8D7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMicroservices.Elastic.Regression", "Tests\DMicroservices.Elastic.Regression\DMicroservices.Elastic.Regression.csproj", "{9387F30B-CA83-4A60-9488-B42614A1B5DA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMicroservices.Elastic.Smoke", "Tests\DMicroservices.Elastic.Smoke\DMicroservices.Elastic.Smoke.csproj", "{D1CB760E-9663-4973-8CC5-A1936C599203}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMicroservices.Elastic.Tls.Regression", "Tests\DMicroservices.Elastic.Tls.Regression\DMicroservices.Elastic.Tls.Regression.csproj", "{8E7F1259-B053-43BA-8E5C-23EECEA8B074}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMicroservices.Redis.Compatibility", "Tests\DMicroservices.Redis.Compatibility\DMicroservices.Redis.Compatibility.csproj", "{9BA2836E-1BBF-493C-8D51-18FF5DFC5417}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +43,22 @@ Global
 		{49480492-5A60-4A9B-A5D9-283F1E38A8D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{49480492-5A60-4A9B-A5D9-283F1E38A8D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{49480492-5A60-4A9B-A5D9-283F1E38A8D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9387F30B-CA83-4A60-9488-B42614A1B5DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9387F30B-CA83-4A60-9488-B42614A1B5DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9387F30B-CA83-4A60-9488-B42614A1B5DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9387F30B-CA83-4A60-9488-B42614A1B5DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1CB760E-9663-4973-8CC5-A1936C599203}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1CB760E-9663-4973-8CC5-A1936C599203}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1CB760E-9663-4973-8CC5-A1936C599203}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1CB760E-9663-4973-8CC5-A1936C599203}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E7F1259-B053-43BA-8E5C-23EECEA8B074}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E7F1259-B053-43BA-8E5C-23EECEA8B074}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E7F1259-B053-43BA-8E5C-23EECEA8B074}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E7F1259-B053-43BA-8E5C-23EECEA8B074}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BA2836E-1BBF-493C-8D51-18FF5DFC5417}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BA2836E-1BBF-493C-8D51-18FF5DFC5417}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BA2836E-1BBF-493C-8D51-18FF5DFC5417}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BA2836E-1BBF-493C-8D51-18FF5DFC5417}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -43,6 +67,10 @@ Global
 		{5F64AAD9-19EE-45EA-89C1-0B0FFEDADEAD} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
 		{ACE87BA3-02F5-49E8-8E40-BD3651CFD67A} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
 		{49480492-5A60-4A9B-A5D9-283F1E38A8D7} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
+		{9387F30B-CA83-4A60-9488-B42614A1B5DA} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
+		{D1CB760E-9663-4973-8CC5-A1936C599203} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
+		{8E7F1259-B053-43BA-8E5C-23EECEA8B074} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
+		{9BA2836E-1BBF-493C-8D51-18FF5DFC5417} = {95570331-64A2-49BC-A7DB-16A83BFD6D03}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {23652937-9489-427B-91AA-2141C0099556}

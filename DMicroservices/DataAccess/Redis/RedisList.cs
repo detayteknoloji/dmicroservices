@@ -10,6 +10,7 @@ namespace DMicroservices.DataAccess.Redis
     public class RedisList<T> : IList<T>
     {
         private static readonly string Domain = Environment.GetEnvironmentVariable("REDIS_URL");
+        private static readonly RedisConnectionFactory _connectionFactory = new RedisConnectionFactory();
         private ConnectionMultiplexer Connection { get; set; }
         private IDatabase RedisDatabase { get; set; }
 
@@ -19,7 +20,7 @@ namespace DMicroservices.DataAccess.Redis
             _key = key;
 
             ConfigurationOptions options = ConfigurationOptions.Parse(Domain);
-            Connection = ConnectionMultiplexer.Connect(options);
+            Connection = _connectionFactory.Connect(options);
             RedisDatabase = Connection.GetDatabase();
         }
         private IDatabase GetRedisDb()

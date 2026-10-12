@@ -17,6 +17,7 @@ namespace DMicroservices.DataAccess.Redis
         private static readonly string _redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 
         private static IConnectionMultiplexer ConnectionObject;
+        private static readonly RedisConnectionFactory _connectionFactory = new RedisConnectionFactory();
 
         /// <summary>
         ///Lock
@@ -35,7 +36,7 @@ namespace DMicroservices.DataAccess.Redis
                     {
                         if (ConnectionObject == null || !ConnectionObject.IsConnected)
                         {
-                            ConnectionObject = ConnectionMultiplexer.Connect(Options);
+                            ConnectionObject = _connectionFactory.Connect(Options);
                         }
                     }
                 }
@@ -55,9 +56,17 @@ namespace DMicroservices.DataAccess.Redis
             Options.KeepAlive = 4;
             Options.SyncTimeout = 15000;
             Options.AbortOnConnectFail = false;
-            ConnectionObject = ConnectionMultiplexer.Connect(Options);
+            try
+            {
+                ConnectionObject = _connectionFactory.Connect(Options);
+                AddRegisterEvent();
+            }
+            catch (Exception ex)
+            {
+                // Sentinele ulaşılamazsa Connect throw atar, singleton oluşturulamaz hale gelmesin, Connection propertysi tekrar dener.
+                ElasticLogger.Instance.Error(ex, "RedisManager: Redis bağlantısı kurulamadı!");
+            }
             //Connection.GetDatabase() = Connection.GetDatabase();
-            AddRegisterEvent();
             MessagePackSerializer.DefaultOptions = MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
         }
 
@@ -305,7 +314,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <param name="key"></param>
         public bool Exists(string key)
         {
-            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: key).Any();
+            return RedisConnectionFactory.GetMasterServer(Connection).Keys(pattern: key).Any();
         }
 
         /// <summary>
@@ -395,7 +404,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeys()
         {
-            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
+            return RedisConnectionFactory.GetMasterServer(Connection).Keys(pattern: "*").ToList();
         }
 
         /// <summary>
@@ -404,7 +413,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeys(int databaseNum)
         {
-            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(databaseNum, pattern: "*").ToList();
+            return RedisConnectionFactory.GetMasterServer(Connection).Keys(databaseNum, pattern: "*").ToList();
         }
 
         /// <summary>
@@ -413,7 +422,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeysByLike(string key)
         {
-            List<RedisKey> keys = Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: "*").ToList();
+            List<RedisKey> keys = RedisConnectionFactory.GetMasterServer(Connection).Keys(pattern: "*").ToList();
             return keys.Where(p => p.ToString().Contains(key)).ToList();
         }
 
@@ -423,7 +432,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeysByLikeOld(string key)
         {
-            return Connection.GetServer(Connection.GetEndPoints().Last()).Keys(pattern: $"*{key}*").ToList();
+            return RedisConnectionFactory.GetMasterServer(Connection).Keys(pattern: $"*{key}*").ToList();
         }
 
         /// <summary>
@@ -432,7 +441,7 @@ namespace DMicroservices.DataAccess.Redis
         /// <returns></returns>
         public List<RedisKey> GetAllKeysByLike(string key, int databaseNum)
         {
-            List<RedisKey> keys = Connection.GetServer(Connection.GetEndPoints().Last()).Keys(databaseNum, pattern: "*").ToList();
+            List<RedisKey> keys = RedisConnectionFactory.GetMasterServer(Connection).Keys(databaseNum, pattern: "*").ToList();
             return keys.Where(p => p.ToString().Contains(key)).ToList();
         }
 
