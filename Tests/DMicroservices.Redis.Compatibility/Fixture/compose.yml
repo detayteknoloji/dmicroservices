@@ -1,0 +1,17 @@
+services:
+  standalone:
+    image: redislabs/rebloom:latest
+    command: ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisbloom.so", "--requirepass", "compat-redis"]
+  master:
+    image: redislabs/rebloom:latest
+    command: ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisbloom.so", "--requirepass", "compat-redis", "--masterauth", "compat-redis"]
+  replica:
+    image: redislabs/rebloom:latest
+    command: ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisbloom.so", "--requirepass", "compat-redis", "--masterauth", "compat-redis", "--replicaof", "master", "6379"]
+    depends_on: [master]
+  sentinel:
+    image: redis:7.2.5
+    command: ["sh", "-c", "cp /fixture/sentinel.conf /tmp/sentinel.conf && exec redis-server /tmp/sentinel.conf --sentinel"]
+    volumes:
+      - ./sentinel.conf:/fixture/sentinel.conf:ro
+    depends_on: [master, replica]

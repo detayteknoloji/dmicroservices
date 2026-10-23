@@ -1,0 +1,29 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_COMPAT_VERSION:?Version is required}
+    environment:
+      discovery.type: single-node
+      node.name: elasticsearch
+      cluster.name: disposable-compatibility
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      ELASTIC_PASSWORD: compat-elastic
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "true"
+      xpack.security.http.ssl.keystore.path: certs/elastic.p12
+      xpack.security.http.ssl.keystore.password: "compat-p12"
+      xpack.security.http.ssl.certificate_authorities: certs/ca.crt
+
+      xpack.security.transport.ssl.enabled: "true"
+      xpack.security.transport.ssl.verification_mode: certificate
+      xpack.security.transport.ssl.keystore.path: certs/elastic.p12
+      xpack.security.transport.ssl.keystore.password: "compat-p12"
+      xpack.security.transport.ssl.certificate_authorities: certs/ca.crt
+
+    volumes:
+      - ${ELASTIC_COMPAT_FIXTURE:?TLS fixture is required}:/usr/share/elasticsearch/config/certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "--cacert", "/usr/share/elasticsearch/config/certs/ca.crt", "--user", "elastic:compat-elastic", "https://localhost:9200"]
+      interval: 3s
+      timeout: 5s
+      start_period: 15s
+      retries: 40

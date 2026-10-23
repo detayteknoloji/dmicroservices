@@ -21,12 +21,13 @@ namespace DMicroservices.DataAccess.Redis
         // redis connection nesneleri
         private static volatile IConnectionMultiplexer _connectionMultiplexer;
         private static readonly object _connectionLock = new object();
+        private static readonly RedisConnectionFactory _connectionFactory = new RedisConnectionFactory();
 
         // redis down oldugunda circuit breaker kaç saniye işlemlere yok çeksin ? throw için yine circuit breaker devre dışıdır throw atar.
         private static readonly object _circuitLock = new object();
         private static volatile bool _isCircuitOpen = false;
         private static DateTime _lastCircuitOpenTime = DateTime.MinValue;
-        private static readonly TimeSpan _circuitOpenDuration = TimeSpan.FromSeconds(30); // 30 saniye boyunca denemeye izin vermciez.
+        private static readonly TimeSpan _circuitOpenDuration = TimeSpan.FromSeconds(5); // 5 saniye boyunca denemeye izin vermiyoruz. Sentinel failover'ı birkaç saniyede bitiyor, uzun tutulursa yeni master hazır olduğu halde bekleniyor.
 
 
         #region Singleton section
@@ -86,9 +87,9 @@ namespace DMicroservices.DataAccess.Redis
 
                     options.DefaultDatabase = 0; // default 0 da olsun.
 
-                    _connectionMultiplexer = ConnectionMultiplexer.Connect(options);
+                    _connectionMultiplexer = _connectionFactory.Connect(options);
                     RegisterConnectionEvents();
-                    LogInfo($"Container {_containerPodName}: Redis bağlantısı sağlandı");
+                    LogInfo($"Container {_containerPodName}: Redis bağlantısı sağlandı{(RedisConnectionFactory.IsSentinel(options) ? $" (Sentinel, serviceName: {options.ServiceName})" : "")}");
                 }
                 catch (Exception ex)
                 {
@@ -97,6 +98,13 @@ namespace DMicroservices.DataAccess.Redis
                 }
             }
             return _connectionMultiplexer;
+        }
+
+        private void ReconfigureAfterReadOnly()
+        {
+            var connection = _connectionMultiplexer;
+            if (connection != null)
+                RedisConnectionFactory.ReconfigureAfterReadOnly(connection);
         }
 
         private IDatabase GetDatabase(int dataBaseNum = -1)
@@ -168,6 +176,13 @@ namespace DMicroservices.DataAccess.Redis
                     }
                 }
 
+                if (isThrowException)
+                    throw;
+            }
+            catch (RedisServerException ex) when (RedisConnectionFactory.IsReadOnlyError(ex))
+            {
+                LogError($"Container {_containerPodName}: Redis '{key}' ile yapılan {operationName} işlemi replica'ya gitti (READONLY)! Master değişmiş olabilir, master/replica rolleri yeniden okunacak.", ex);
+                ReconfigureAfterReadOnly();
                 if (isThrowException)
                     throw;
             }
@@ -501,7 +516,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     try
                     {
-                        return _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints().Last()).Keys(pattern: "*").ToList();
+                        return RedisConnectionFactory.GetMasterServer(_connectionMultiplexer).Keys(pattern: "*").ToList();
                     }
                     catch (Exception ex)
                     {
@@ -536,7 +551,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
                     {
-                        if (isThrowEx) throw new RedisCircuitOpenException($"Redis aşırı bağlantı koruması açık!. ScanKeysByPattern için aradığınız  '{searchKey}' değer 30 saniye boyunca getirilmeyecek.");
+                        if (isThrowEx) throw new RedisCircuitOpenException($"Redis aşırı bağlantı koruması açık!. ScanKeysByPattern için aradığınız  '{searchKey}' değer {_circuitOpenDuration.TotalSeconds} saniye boyunca getirilmeyecek.");
                         return Enumerable.Empty<RedisKey>();
                     }
                     _lastCircuitOpenTime = DateTime.UtcNow;
@@ -558,7 +573,7 @@ namespace DMicroservices.DataAccess.Redis
                 return Enumerable.Empty<RedisKey>();
             }
 
-            var server = connection.GetServer(connection.GetEndPoints().First());
+            var server = RedisConnectionFactory.GetMasterServer(connection);
             return ScanKeysImplementation(server, searchKey, databaseNum, pageSize, isThrowEx);
         }
 
@@ -676,7 +691,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     if (DateTime.UtcNow - _lastCircuitOpenTime < _circuitOpenDuration)
                     {
-                        if (isThrowEx) throw new RedisCircuitOpenException($"Redis aşırı bağlantı koruması açık!. DeleteByPattern için aradığınız  '{searchKey}' değer 30 saniye boyunca getirilmeyecek.");
+                        if (isThrowEx) throw new RedisCircuitOpenException($"Redis aşırı bağlantı koruması açık!. DeleteByPattern için aradığınız  '{searchKey}' değer {_circuitOpenDuration.TotalSeconds} saniye boyunca getirilmeyecek.");
                         return 0;
                     }
                     else
@@ -695,7 +710,6 @@ namespace DMicroservices.DataAccess.Redis
                     throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Redis connectionu açılamadı");
                 }
 
-                var server = connection.GetServer(connection.GetEndPoints().First());
                 var database = connection.GetDatabase(databaseNum);
 
                 string scanPattern = isStartWithControl ? $"{searchKey}*" : $"*{searchKey}*";
@@ -746,6 +760,12 @@ namespace DMicroservices.DataAccess.Redis
                 }
                 if (isThrowEx) throw;
             }
+            catch (RedisServerException ex) when (RedisConnectionFactory.IsReadOnlyError(ex))
+            {
+                LogError($"DeleteByPattern '{searchKey}' silme işlemi replica'ya gitti (READONLY)! Master değişmiş olabilir, master/replica rolleri yeniden okunacak.", ex);
+                ReconfigureAfterReadOnly();
+                if (isThrowEx) throw;
+            }
             catch (Exception ex)
             {
                 LogError($"DeleteByPattern metohdunda, beklenmeyen hata!  '{searchKey}'.", ex);
@@ -765,7 +785,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     try
                     {
-                        return _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints().Last()).Keys(databaseNum, pattern: "*").ToList();
+                        return RedisConnectionFactory.GetMasterServer(_connectionMultiplexer).Keys(databaseNum, pattern: "*").ToList();
                     }
                     catch (Exception ex)
                     {
@@ -786,7 +806,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     try
                     {
-                        return _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints().Last()).Keys(pattern: $"*{key}*").ToList();
+                        return RedisConnectionFactory.GetMasterServer(_connectionMultiplexer).Keys(pattern: $"*{key}*").ToList();
                     }
                     catch (Exception ex)
                     {
@@ -807,7 +827,7 @@ namespace DMicroservices.DataAccess.Redis
                 {
                     try
                     {
-                        List<RedisKey> keys = _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints().Last()).Keys(databaseNum, pattern: $"*{key}*").ToList();
+                        List<RedisKey> keys = RedisConnectionFactory.GetMasterServer(_connectionMultiplexer).Keys(databaseNum, pattern: $"*{key}*").ToList();
                         return keys.Where(p => p.ToString().Contains(key)).ToList();
                     }
                     catch (Exception ex)

@@ -40,7 +40,14 @@ namespace DMicroservices.DataAccess.ElasticSearch
                     if (string.IsNullOrEmpty(elasticUri))
                         throw new ArgumentNullException($"ELASTIC_URI environment variable can not be empty");
 
-                    _connectionSettings = new ConnectionSettings(new Uri(elasticUri));
+                    var connection = Utils.Logger.ElasticConnectionSettings.FromEnvironment(elasticUri);
+                    var certificateValidation = Utils.Logger.ElasticCertificateTrust.CreateValidationCallback(connection.Endpoint);
+                    var settings = new ConnectionSettings(connection.Endpoint).EnableApiVersioningHeader();
+                    if (certificateValidation != null)
+                        settings.ServerCertificateValidationCallback(certificateValidation);
+                    if (!string.IsNullOrEmpty(connection.Username))
+                        settings.BasicAuthentication(connection.Username, connection.Password);
+                    _connectionSettings = settings;
                 }
 
                 return _connectionSettings;

@@ -22,6 +22,7 @@ namespace DMicroservices.DataAccess.Redis
 
         private static RedLockFactory _redLockFactory;
         private static readonly object _factoryLock = new object();
+        private static readonly RedisConnectionFactory _connectionFactory = new RedisConnectionFactory();
 
         #region Singleton section
         private static readonly Lazy<RedLockManager> _instance =
@@ -79,7 +80,7 @@ namespace DMicroservices.DataAccess.Redis
                     options.KeepAlive = 30;         
                     options.DefaultDatabase = 15;
 
-                    _lockConnection = ConnectionMultiplexer.Connect(options);
+                    _lockConnection = _connectionFactory.Connect(options);
                     _redLockFactory = RedLockFactory.Create(new List<RedLockMultiplexer> { _lockConnection as ConnectionMultiplexer });
 
                     factory = _redLockFactory;

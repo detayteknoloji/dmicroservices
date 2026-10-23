@@ -9,6 +9,8 @@
         "MONGO_DB_NAME": "DMicroservices",
         "THROW_UNIT_OF_WORK_ERROR": "true",
         "ELASTIC_URI": "http://localhost:13030",
+        "ELASTIC_USERNAME": "",
+        "ELASTIC_PASSWORD": "",
         "LOG_INDEX_FORMAT": "serilog-{0:yyyy.MM.dd}",
         "REDIS_URL": "127.0.0.1:13036",
         "THROW_MONGO_ERROR": "false",
