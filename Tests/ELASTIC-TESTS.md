@@ -31,7 +31,7 @@ Bu komutlar yalnızca cache'deki paketleri kullanır. `NuGetAudit=false` nedeniy
 
 | Proje | Kapsam |
 | --- | --- |
-| Elastic.Regression | URI ve environment variable üzerinden credentials, index yönlendirmesi, loglarda hassas bilgilerin gizlenmesi, dosya loglarının flush edilmesi, eşzamanlı shutdown ve template oluşturma hatası |
+| Elastic.Regression | URI ve environment variable üzerinden credentials, index yönlendirmesi, loglarda hassas bilgilerin gizlenmesi, dosya loglarının diske yazılması, eşzamanlı loglama, iç içe (re-entrant) log çağrısı, template oluşturma hatası ve Elasticsearch'e erişilemezken (kapalı port / yanıt vermeyen cluster) ilk log ve normal log sürelerinin ölçümü |
 | Elastic.Smoke | Lokalde çalışan Kestrel HTTP fixture üzerinden typeless bulk, compatibility header'ları, üç log yönlendirmesi, o test çalışmasına ait kayıtların ulaşması, index yönlendirmesi çakışması, HTTP 403, Silent modunda template hatasından sonra toparlanma ve beklenen Elasticsearch sürümünün uyuşmaması |
 | Elastic.Tls.Regression | Production CA validation callback'i: sistemin güvendiği sertifika, farklı CA, eksik sertifika, hostname uyuşmazlığı, süresi dolmuş sertifika ve server EKU kontrolleri |
 
@@ -41,7 +41,7 @@ HTTP fixture kullanan testlerde `Category=LocalHttpFixture` bulunur. Bu testleri
 
 TLS testleri geçici sertifikaları .NET cryptography API'leriyle üretir. OpenSSL veya Python gerekmez; işletim sisteminin certificate store'u değiştirilmez. Bu testler callback davranışını kontrol eder. Gerçek Linux TLS handshake'i ve NEST üzerinden servis bağlantısı Docker integration testlerinde kontrol edilir. Cluster durability bu testlerin kapsamında değildir.
 
-Test uygulaması her senaryo için ayrı bir process başlatır. Böylece logger singleton'ı, environment variable'lar ve `CloseAndFlush` sonrası durum diğer senaryolara taşınmaz. `ProbeRunner` çalışma süresini sınırlar, hata çıktısını toplar ve üst process'ten gelen Elasticsearch endpoint/credential ayarlarını temizler.
+Test uygulaması her senaryo için ayrı bir process başlatır. Böylece logger singleton'ı, environment variable'lar ve sink durumu diğer senaryolara taşınmaz. `ProbeRunner` çalışma süresini sınırlar, hata çıktısını toplar ve üst process'ten gelen Elasticsearch endpoint/credential ayarlarını temizler.
 
 Dosya ve TLS testleri işletim sisteminin geçici klasöründe benzersiz `elastic-regression-*` / `elastic-tls-regression-*` klasörleri oluşturur. Hata incelemesi için bu dosyalar saklanır.
 
@@ -84,6 +84,6 @@ Bu komut belirtilen cluster'a üç log kaydı gönderir ve kayıtları search il
 
 ## Son doğrulama
 
-Yerel Elasticsearch testleri: Regression **2/2**, Smoke **6/6**, TLS **1/1** başarılı.
+Yerel Elasticsearch testleri: Regression **4/4**, Smoke **6/6**, TLS **1/1** başarılı.
 
 Docker integration testleri: Redis standalone, Sentinel failover, Elasticsearch **7.16.1** ve **8.15.0** başarılı. Redis xUnit integration testleri de Docker fixture ile etkinleştirilerek çalıştırıldı: **2/2 başarılı, 0 skip**. Fixture ayarları verilmeden yapılan varsayılan `dotnet test` çalışmasında bu iki test tasarım gereği skip edilir.

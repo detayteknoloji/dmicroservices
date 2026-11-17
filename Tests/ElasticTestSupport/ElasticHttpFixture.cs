@@ -23,6 +23,8 @@ internal sealed class ElasticHttpFixture : IAsyncDisposable
     public bool DenyTemplates { get; set; }
     public bool RejectItems { get; set; }
     public int BulkStatus { get; set; } = 200;
+    // Yanıt vermeyen (asılı kalan) bir cluster'ı taklit eder; probe process'i /__fixture/delay/{ms} ile de açabilir.
+    public TimeSpan Delay { get; set; }
     public string Address { get; private set; }
     public (string Index, JsonElement Document)[] Records => records.ToArray();
 
@@ -47,7 +49,17 @@ internal sealed class ElasticHttpFixture : IAsyncDisposable
     private async Task HandleAsync(HttpContext context)
     {
         var path = context.Request.Path.Value ?? "/";
+        if (path.StartsWith("/__fixture/delay/"))
+        {
+            Delay = TimeSpan.FromMilliseconds(int.Parse(path.Substring("/__fixture/delay/".Length)));
+            return;
+        }
         Requests.Enqueue((context.Request.Method, path));
+        if (Delay > TimeSpan.Zero)
+        {
+            try { await Task.Delay(Delay, context.RequestAborted); }
+            catch (OperationCanceledException) { return; }
+        }
         context.Response.Headers["X-Elastic-Product"] = "Elasticsearch";
         bool template = path.Contains("/_template/") || path.Contains("/_index_template/") || path.Contains("/_component_template/");
         if (context.Request.Method == "HEAD")

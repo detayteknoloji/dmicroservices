@@ -7,6 +7,7 @@ using DMicroservices.Utils.Logger;
 
 Console.WriteLine("RUNTIME: " + Environment.Version);
 if (Environment.Version.Major != 5) throw new InvalidOperationException("This probe requires .NET 5.");
+if (await DMicroservices.Elastic.Regression.OutageProbes.TryRunAsync(args)) return;
 
 if (args.Contains("--setup-failure"))
 {
@@ -29,8 +30,6 @@ if (args.Contains("--setup-failure"))
         failed.InfoSpecificIndexFormat("BUSINESS_CONTINUES", "failed-route");
         failed.InfoSpecificIndexFormat("BUSINESS_CONTINUES", "failed-route", new Dictionary<string, object> { ["Id"] = 1 });
         failed.ErrorSpecificIndexFormat(new Exception("Business error"), "BUSINESS_CONTINUES", "failed-route");
-        failed.CloseAndFlush();
-        failed.CloseAndFlush();
         if (!output.ToString().Contains("Elasticsearch sink setup failed")) throw new Exception("Failure was not printed to console.");
     }
     finally { Console.SetError(original); }
@@ -80,15 +79,31 @@ var logger = ElasticLogger.Instance;
 logger.Info("BEFORE_CLOSE_INFO");
 logger.Error(new InvalidOperationException("BEFORE_CLOSE_EXCEPTION"), "BEFORE_CLOSE_ERROR");
 logger.InfoSpecificIndexFormatInFile("BEFORE_CLOSE_SPECIFIC", "regression", directory);
+// ToString() log yazarken tekrar logger'a girer: business koduna exception fırlatmamalı.
+logger.Error(new InvalidOperationException("RECURSION_EXCEPTION"), "RECURSION_OUTER", new ReentrantTrackObject());
 await Task.WhenAll(Enumerable.Range(0, 8).Select(worker => Task.Run(() =>
 {
     for (int i = 0; i < 100; i++) logger.InfoSpecificIndexFormatInFile("CONCURRENT", "worker" + worker, directory);
-})).Concat(new[] { Task.Run(() => logger.CloseAndFlush()) }));
-logger.CloseAndFlush();
-logger.Info("AFTER_CLOSE");
-logger.InfoSpecificIndexFormatInFile("AFTER_CLOSE", "after-close", directory);
-logger.InfoSpecificIndexFormat("AFTER_CLOSE", "after-close");
-var content = string.Join("\n", Directory.GetFiles(directory, "*.txt", SearchOption.AllDirectories).Select(File.ReadAllText));
-Check(!logger.IsConfigured && content.Contains("BEFORE_CLOSE_INFO") && content.Contains("BEFORE_CLOSE_ERROR")
-    && content.Contains("BEFORE_CLOSE_EXCEPTION") && content.Contains("BEFORE_CLOSE_SPECIFIC") && !content.Contains("AFTER_CLOSE"), "File/lifecycle regression.");
-Console.WriteLine("PASS: URI/env auth, route validation, file logging, concurrent terminal shutdown on " + Environment.Version);
+})));
+// CloseAndFlush yok: dosya sink'i buffer'sız yazdığı için içerik zaten diskte olmalı.
+var content = string.Join("\n", Directory.GetFiles(directory, "*.txt", SearchOption.AllDirectories).Select(path =>
+{
+    using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd();
+}));
+int concurrent = content.Split("CONCURRENT").Length - 1;
+Check(logger.IsConfigured && content.Contains("BEFORE_CLOSE_INFO") && content.Contains("BEFORE_CLOSE_ERROR")
+    && content.Contains("BEFORE_CLOSE_EXCEPTION") && content.Contains("BEFORE_CLOSE_SPECIFIC") && concurrent == 800,
+    "File logging regression (CONCURRENT=" + concurrent + ").");
+Check(content.Contains("RECURSION_OUTER") && content.Contains("RECURSION_NESTED"), "Re-entrant log call was lost.");
+Console.WriteLine("PASS: URI/env auth, route validation, file logging, concurrent logging on " + Environment.Version);
+
+sealed class ReentrantTrackObject
+{
+    public override string ToString()
+    {
+        ElasticLogger.Instance.Info("RECURSION_NESTED");
+        return "reentrant";
+    }
+}

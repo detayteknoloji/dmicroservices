@@ -26,18 +26,13 @@ namespace DMicroservices.Utils.Logger
         private static readonly ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>> SpecificIndexFormat = new ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>>();
         private static readonly ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>> SpecificIndexFileFormat = new ConcurrentDictionary<string, Tuple<bool, Serilog.Core.Logger>>();
 
-        private readonly ReaderWriterLockSlim _lifecycle = new ReaderWriterLockSlim();
-        private volatile bool _closed;
-        private volatile bool _configured;
-        public bool IsConfigured { get => _configured && !_closed; set => _configured = value && !_closed; }
-        public static void CloseAndFlushIfCreated() { if (_instance.IsValueCreated) _instance.Value.CloseAndFlush(); }
+        public bool IsConfigured { get; set; }
 
         #region Singleton Section
         private static readonly Lazy<ElasticLogger> _instance = new Lazy<ElasticLogger>(() => new ElasticLogger());
 
         private ElasticLogger()
         {
-            AppDomain.CurrentDomain.ProcessExit += (_, __) => CloseAndFlushIfCreated();
             string fallbackFormat = Environment.GetEnvironmentVariable("LOG_INDEX_FORMAT");
             _consoleErrorLogger = CreateConsoleFallbackLogger($"error-{fallbackFormat}");
             _consoleInfoLogger = CreateConsoleFallbackLogger($"info-{fallbackFormat}");
@@ -54,7 +49,11 @@ namespace DMicroservices.Utils.Logger
                 string format = Environment.GetEnvironmentVariable("LOG_INDEX_FORMAT");
 
                 if (!ElasticUriControl(ElasticUri, format))
+                {
+                    // elastic hata alırsa selflog etsın 
+                    Serilog.Debugging.SelfLog.Enable(WriteSinkDiagnostic);
                     Configure(ElasticUri, format);
+                }
             }
         }
 
@@ -82,10 +81,6 @@ namespace DMicroservices.Utils.Logger
 
         public void Error(Exception ex, string messageTemplate)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             if (messageTemplate == null)
                 messageTemplate = $"Parent: {System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name}";
             else
@@ -97,8 +92,6 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         private readonly object _objectInitializeLock = new object();
@@ -136,26 +129,16 @@ namespace DMicroservices.Utils.Logger
 
         public void ErrorSpecificIndexFormatInFile(Exception ex, string messageTemplate, string specificIndexFormat, string logFilePath)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
             GetSpecificLoggerFileInstance($"error-{specificIndexFormat}", logFilePath, true)?.Error(ex, messageTemplate);
 
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void ErrorSpecificIndexFormatInFile(Exception ex, string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters, string logFilePath)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
@@ -165,16 +148,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void InfoSpecificIndexFormatInFile(string messageTemplate, string fileName, string logFilePath)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             GetSpecificLoggerFileInstance($"info-{fileName}", logFilePath, false)?.Information(messageTemplate);
@@ -182,16 +159,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void InfoSpecificIndexFormatInFile(string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters, string logFilePath)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
@@ -201,8 +172,6 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {parameterMessageTemplate}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         #endregion
@@ -211,10 +180,6 @@ namespace DMicroservices.Utils.Logger
 
         public void ErrorSpecificIndexFormat(Exception ex, string messageTemplate, string specificIndexFormat)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             SetStacktraceExceptionSource(ex);
@@ -223,16 +188,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void ErrorSpecificIndexFormat(Exception ex, string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
@@ -243,16 +202,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\n{specificIndexFormat}\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void InfoSpecificIndexFormat(string messageTemplate, string specificIndexFormat)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             GetSpecificLoggerInstance($"info-{specificIndexFormat}")?.Information(messageTemplate);
@@ -260,16 +213,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void InfoSpecificIndexFormat(string messageTemplate, string specificIndexFormat, Dictionary<string, object> parameters)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             string parameterMessageTemplate = CreateWithParameterMessageTemplate(messageTemplate, parameters);
@@ -279,18 +226,12 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {parameterMessageTemplate}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
         #endregion
 
         #region Normal Elastic Index Methods
         public void Error(Exception ex, string messageTemplate, string companyNo)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             messageTemplate += " by Company Id :{@CompanyNo}";
@@ -300,16 +241,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void Error(Exception ex, string messageTemplate, object trackObject)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             messageTemplate += " with Track object : {@trackObject}";
@@ -319,16 +254,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void Error(Exception ex, string messageTemplate, Dictionary<string, object> parameters)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             if (messageTemplate == null)
                 return;
 
@@ -351,16 +280,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nThrow an exception : {ex.Message}\n{messageTemplate}\n{ex.StackTrace}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void Info(string messageTemplate)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             messageTemplate = CreateMessageTemplate(messageTemplate);
 
             InfoLogger?.Information(messageTemplate);
@@ -368,16 +291,10 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
 
         public void Info(string messageTemplate, Dictionary<string, object> parameters)
         {
-            _lifecycle.EnterReadLock();
-            try
-            {
-                if (_closed) return;
             if (messageTemplate == null)
                 return;
 
@@ -400,8 +317,6 @@ namespace DMicroservices.Utils.Logger
 #if DEBUG
             Debug.WriteLine($"***********************************\nInformation : {messageTemplate}***********************************\n");
 #endif
-            }
-            finally { _lifecycle.ExitReadLock(); }
         }
         #endregion
 
@@ -494,7 +409,7 @@ namespace DMicroservices.Utils.Logger
                         if (certificateValidation != null) settings = settings.ServerCertificateValidationCallback(certificateValidation);
                         return string.IsNullOrEmpty(username) ? settings : settings.BasicAuthentication(username, password);
                     },
-                    EmitEventFailure = Serilog.Sinks.Elasticsearch.EmitEventFailureHandling.RaiseCallback,
+                    EmitEventFailure = Serilog.Sinks.Elasticsearch.EmitEventFailureHandling.RaiseCallback | Serilog.Sinks.Elasticsearch.EmitEventFailureHandling.WriteToSelfLog,
                     FailureCallback = logEvent => WriteToConsoleFallback(indexFormat, logEvent)
                 };
                 Serilog.LoggerConfigurationElasticsearchExtensions.Elasticsearch(loggerConfiguration.WriteTo, options);
@@ -512,6 +427,18 @@ namespace DMicroservices.Utils.Logger
                 logger = null;
                 ReportLoggerFailure("Elasticsearch sink setup", error);
             }
+        }
+
+        private static void WriteSinkDiagnostic(string message)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(message)) return;
+                string text = message.Replace("\r\n", " | ").Replace("\n", " | ").Replace("\r", " ");
+                if (text.Length > 3000) text = text.Substring(0, 1000) + " ... " + text.Substring(text.Length - 2000);
+                Console.Error.WriteLine("[ELASTIC-ERROR] " + RedactSecrets(text));
+            }
+            catch { }
         }
 
         internal static void ReportLoggerFailure(string operation, Exception error)
@@ -616,31 +543,6 @@ namespace DMicroservices.Utils.Logger
         }
 
         public static string GetLogSearchTarget(string route) => ToIndexSearchTarget(route);
-
-        public void CloseAndFlush()
-        {
-            _lifecycle.EnterWriteLock();
-            try
-            {
-                if (_closed) return;
-                _closed = true;
-                _configured = false;
-                var loggers = new List<Serilog.Core.Logger> { _errorLogger, _infoLogger, _consoleErrorLogger, _consoleInfoLogger };
-                loggers.AddRange(SpecificIndexFormat.Values.Select(x => x.Item2));
-                loggers.AddRange(SpecificIndexFileFormat.Values.Select(x => x.Item2));
-                _errorLogger = null;
-                _infoLogger = null;
-                _consoleErrorLogger = null;
-                _consoleInfoLogger = null;
-                SpecificIndexFormat.Clear();
-                SpecificIndexFileFormat.Clear();
-                foreach (var logger in loggers.Where(x => x != null).Distinct())
-                {
-                    try { logger.Dispose(); } catch (Exception error) { ReportLoggerFailure("sink shutdown", error); }
-                }
-            }
-            finally { _lifecycle.ExitWriteLock(); }
-        }
 
         private void SetStacktraceExceptionSource(Exception ex)
         {
