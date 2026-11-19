@@ -26,18 +26,12 @@ if (!logger.IsConfigured)
     throw new InvalidOperationException("Elasticsearch logger is not configured.");
 var id = Environment.GetEnvironmentVariable("SMOKE_TEST_ID") ?? Guid.NewGuid().ToString("N");
 var runId = Guid.NewGuid().ToString("N");
-try
-{
-    var properties = new Dictionary<string, object> { ["SmokeTestId"] = id, ["SmokeRunId"] = runId };
-    logger.Info("Elasticsearch smoke info ", properties);
-    logger.Error(new InvalidOperationException("Expected smoke test exception"), "Elasticsearch smoke error ", properties);
-    logger.InfoSpecificIndexFormat("Elasticsearch smoke specific ", "ledms-rabbitmq", properties);
-    Console.WriteLine($"SmokeTestId={id}; SmokeRunId={runId}; waiting for searchable info, error and specific events.");
-}
-finally
-{
-    logger.CloseAndFlush();
-}
+// CloseAndFlush yok: sink kendi periyodunda gönderir, aşağıdaki search döngüsü teslimi bekler.
+var properties = new Dictionary<string, object> { ["SmokeTestId"] = id, ["SmokeRunId"] = runId };
+logger.Info("Elasticsearch smoke info ", properties);
+logger.Error(new InvalidOperationException("Expected smoke test exception"), "Elasticsearch smoke error ", properties);
+logger.InfoSpecificIndexFormat("Elasticsearch smoke specific ", "ledms-rabbitmq", properties);
+Console.WriteLine($"SmokeTestId={id}; SmokeRunId={runId}; waiting for searchable info, error and specific events.");
 
 var address = Environment.GetEnvironmentVariable("ELASTIC_URI");
 var verifyUser = Environment.GetEnvironmentVariable("ELASTIC_VERIFY_USERNAME");

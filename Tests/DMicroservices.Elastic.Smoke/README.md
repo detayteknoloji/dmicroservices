@@ -40,7 +40,7 @@ Sürüm uyuşmazsa log yazılmadan test başarısız olur. Yerel xUnit Smoke tes
 Sürüm doğrulamasından sonra aynı test uygulaması her iki sürüm için şunları kontrol eder:
 
 - `info`, `error` ve `specific` log kayıtlarının doğru index'lere gitmesi.
-- `CloseAndFlush` sonrası o test çalışmasına ait kayıtların search ile bulunması.
+- Sink'in periyodik gönderiminden sonra o test çalışmasına ait kayıtların search ile bulunması.
 - `COMPAT_VERIFY_HELPER=1` ile paketin `ElasticHelper/NEST` üzerinden yazma, refresh ve search işlemleri.
 - HTTPS, Basic Auth ve test için üretilen özel CA ile bağlantı. CA kontrolünde production certificate validation callback'i kullanılır.
 
